@@ -1,0 +1,123 @@
+# oh-my-longfor Team Manifest
+# =============================================================================
+# This is your team's configuration manifest for oh-my-longfor (oml).
+# Fork this repository and customize this file for your team.
+#
+# After setup, run: bash install.sh <this-repo-url>
+# =============================================================================
+
+version: "1"
+
+# =============================================================================
+# MCPs (Model Context Protocol Servers)
+# =============================================================================
+# These are Remote/SSE MCPs that will be configured in OpenCode for all team members.
+# Use {env:VAR_NAME} syntax for secrets — never put actual keys here!
+# =============================================================================
+mcps:
+  # Context7 — Up-to-date library documentation
+  - name: context7
+    type: remote
+    url: "https://mcp.context7.com/sse"
+    headers:
+      Authorization: "Bearer {env:CONTEXT7_API_KEY}"
+
+  # Sentry — Error tracking and issue management
+  - name: sentry
+    type: remote
+    url: "https://mcp.sentry.io/sse"
+    headers:
+      Authorization: "Bearer {env:SENTRY_TOKEN}"
+
+  # GitHub — Repository, PR, and issue management
+  - name: github
+    type: remote
+    url: "https://api.githubcopilot.com/mcp/sse"
+    headers:
+      Authorization: "Bearer {env:GITHUB_TOKEN}"
+      X-GitHub-Api-Version: "2022-11-28"
+
+  # Linear — Project management and issue tracking
+  - name: linear
+    type: remote
+    url: "https://mcp.linear.app/sse"
+    headers:
+      Authorization: "Bearer {env:LINEAR_API_KEY}"
+
+  # Slack — Team communication integration
+  - name: slack
+    type: remote
+    url: "https://mcp.slack.com/sse"
+    headers:
+      Authorization: "Bearer {env:SLACK_BOT_TOKEN}"
+
+# =============================================================================
+# Skills
+# =============================================================================
+# Git repositories containing OpenCode skills for your team.
+# Each repo should have a directory structure like: <repo>/<subdir>/<skill-name>/SKILL.md
+# =============================================================================
+skills:
+  repos:
+    # Public team skills repository
+    - repo: "https://github.com/example/team-ai-skills"
+      branch: main
+      subdir: "skills/"
+      auth: null  # public repo
+
+    # Domain-specific skills (private repo using GitHub token)
+    - repo: "https://github.com/example/domain-skills"
+      branch: main
+      subdir: "skills/"
+      auth: token  # uses GITHUB_TOKEN env var
+
+# =============================================================================
+# Environment Variables
+# =============================================================================
+# All env vars required by your team's MCPs and skills.
+# Run `oml env` to see which vars you have set and which are missing.
+# Copy ~/.oml/env/.env.template to ~/.env.oml and fill in your values.
+# =============================================================================
+env:
+  - name: CONTEXT7_API_KEY
+    description: "Context7 API key for documentation MCP. Get from https://context7.com/settings (free tier available)"
+    required: true
+
+  - name: SENTRY_TOKEN
+    description: "Sentry authentication token for error tracking MCP. Create at https://sentry.io/settings/account/api/auth-tokens/"
+    required: true
+
+  - name: GITHUB_TOKEN
+    description: "GitHub personal access token for GitHub MCP and private skill repos. Create at https://github.com/settings/tokens with repo scope"
+    required: true
+
+  - name: LINEAR_API_KEY
+    description: "Linear API key for project management MCP. Get from https://linear.app/settings/api"
+    required: false
+
+  - name: SLACK_BOT_TOKEN
+    description: "Slack Bot OAuth token for Slack MCP. Create a Slack App at https://api.slack.com/apps"
+    required: false
+
+  - name: OPENAI_API_KEY
+    description: "OpenAI API key for GPT-4 model access in oracle agent. Get from https://platform.openai.com/api-keys"
+    required: false
+
+  - name: ANTHROPIC_API_KEY
+    description: "Anthropic API key for Claude model access. Get from https://console.anthropic.com/settings/keys"
+    required: false
+
+# =============================================================================
+# oh-my-opencode Overrides
+# =============================================================================
+# Optional: Override oh-my-opencode defaults for your team.
+# Leave empty to use oh-my-opencode defaults.
+# =============================================================================
+omo_overrides:
+  agents:
+    # Example: override oracle agent model
+    # oracle:
+    #   model: "gpt-4o"
+  models: {}
+  disabled_mcps: []
+  disabled_skills: []

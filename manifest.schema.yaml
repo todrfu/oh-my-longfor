@@ -1,0 +1,141 @@
+# oh-my-longfor Manifest Schema
+# JSON Schema validation for team manifest files
+# See: https://json-schema.org/draft-07/schema
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "oh-my-longfor Team Manifest"
+description: "Schema for oh-my-longfor team configuration manifest files"
+type: object
+required:
+  - version
+  - mcps
+  - skills
+  - env
+
+properties:
+  version:
+    type: string
+    description: "Schema version (currently '1')"
+    example: "1"
+
+  mcps:
+    type: array
+    description: "List of Remote/SSE MCPs to configure for the team"
+    minItems: 0
+    items:
+      type: object
+      required:
+        - name
+        - type
+        - url
+      properties:
+        name:
+          type: string
+          description: "Unique identifier for this MCP (used as key in opencode.json)"
+          pattern: "^[a-z0-9_-]+$"
+        type:
+          type: string
+          enum:
+            - remote
+          description: "MCP type — always 'remote' for Remote/SSE MCPs"
+        url:
+          type: string
+          format: uri
+          description: "SSE endpoint URL for the MCP"
+        headers:
+          type: object
+          description: "HTTP headers to send with MCP requests. Use {env:VAR_NAME} for secrets."
+          additionalProperties:
+            type: string
+        env_vars:
+          type: array
+          description: "List of env var names this MCP requires (for documentation)"
+          items:
+            type: string
+
+  skills:
+    type: object
+    description: "Skill repository configuration"
+    properties:
+      repos:
+        type: array
+        description: "Git repositories containing OpenCode skills"
+        items:
+          type: object
+          required:
+            - repo
+          properties:
+            repo:
+              type: string
+              description: "Git repository URL (HTTPS or SSH)"
+              examples:
+                - "https://github.com/example/team-skills"
+                - "git@github.com:example/team-skills.git"
+            branch:
+              type: string
+              default: main
+              description: "Git branch to checkout (default: main)"
+            subdir:
+              type: string
+              default: "skills/"
+              description: "Subdirectory within the repo containing skill directories"
+            auth:
+              type:
+                - string
+                - "null"
+              enum:
+                - null
+                - ssh
+                - token
+              default: null
+              description: |
+                Authentication method for cloning:
+                - null: public repo, no auth needed
+                - ssh: use SSH key (must be configured in ~/.ssh/)
+                - token: use GITHUB_TOKEN env var for authentication
+
+  env:
+    type: array
+    description: "Environment variables required by MCPs and skills"
+    items:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: "Environment variable name (UPPER_SNAKE_CASE)"
+          pattern: "^[A-Z][A-Z0-9_]*$"
+        description:
+          type: string
+          description: "Human-readable description: what it's for and how to get it"
+        required:
+          type: boolean
+          default: true
+          description: "Whether this env var is required (true) or optional (false)"
+
+  omo_overrides:
+    type: object
+    description: "oh-my-opencode configuration overrides applied on top of team defaults"
+    properties:
+      agents:
+        type: object
+        description: "Agent configuration overrides (model preferences, etc.)"
+        additionalProperties: true
+      models:
+        type: object
+        description: "Model configuration overrides"
+        additionalProperties: true
+      disabled_mcps:
+        type: array
+        description: "MCP names to disable for this team"
+        items:
+          type: string
+      disabled_skills:
+        type: array
+        description: "Skill names to disable for this team"
+        items:
+          type: string
+
+additionalProperties: false

@@ -1,0 +1,4 @@
+Schema valid
+MCPs: 5
+Skill repos: 2
+Env vars: 7

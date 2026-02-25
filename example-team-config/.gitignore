@@ -1,0 +1,9 @@
+# Don't commit any real secrets or personal configs
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Local override files
+local.yaml
+local.yml

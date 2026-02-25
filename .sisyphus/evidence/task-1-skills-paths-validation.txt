@@ -1,0 +1,53 @@
+=== skills.paths Validation Test Results ===
+
+OpenCode Version: 1.2.13
+Test Date: 2026-02-25
+Test Environment: macOS (darwin)
+
+== Test Setup ==
+Test skill path: /tmp/oml-test-skills/test-skill/SKILL.md
+Test SKILL.md frontmatter:
+  name: test-skill
+  description: Validation test skill for oh-my-longfor skills.paths testing
+
+Test config: {"$schema":"https://opencode.ai/config.json","skills":{"paths":["/tmp/oml-test-skills"]}}
+
+== Test Results ==
+
+Test 1: Using OPENCODE_CONFIG env var
+  Config shows skills.paths correctly: YES
+  test-skill discovered: NO
+  Result: skills.paths in env-based config does NOT load custom skills
+
+Test 2: Using config in ~/.config/opencode/opencode.json
+  test-skill discovered: NO
+  Result: skills.paths does NOT add test-skill to skill list
+
+Test 3: Default behavior (no custom skills.paths)
+  Skills discovered: 8 (from ~/.claude/skills/ and ~/.agents/skills/)
+  Custom path added: 0 additional skills
+
+== Conclusion ==
+RESULT: NOT WORKS (skills.paths does not load custom skill directories in OpenCode 1.2.13)
+
+The `skills.paths` field exists in the OpenCode JSON schema 
+(https://opencode.ai/config.json) as:
+  "paths": { "description": "Additional paths to skill folders", "type": "array" }
+
+However, in testing, adding paths to this config field does NOT cause OpenCode to
+discover skills from those paths. The skill count remains unchanged.
+
+== Fallback Strategy ==
+Use SYMLINKS: Create symlinks from ~/.claude/skills/<skill-name> or
+~/.agents/skills/<skill-name> pointing to cloned skill directories.
+
+Symlink structure:
+  ~/.claude/skills/<skill-name> -> ~/.oml/repos/<repo-name>/skills/<skill-name>/
+
+This is confirmed to work because ~/.claude/skills/ IS scanned by OpenCode.
+
+== Recommendation for oml ==
+In lib/config.sh:
+  - PRIMARY: Attempt skills.paths first (in case future OpenCode versions support it)
+  - FALLBACK: Always create symlinks as a secondary mechanism
+  - This ensures forward compatibility

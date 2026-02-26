@@ -15,7 +15,7 @@
 ## 🚀 Features
 
 - **Zero-Dependency Bootstrap**: Written in pure `bash`. Only requires `curl` and `git` to run.
-- **Toolchain Management**: Automatically installs `bun`, `opencode` (via official binaries), and the `oh-my-opencode` plugin if they are missing.
+- **Toolchain Management**: Automatically installs `bun`, `opencode` (via official binaries), and the `oh-my-opencode` plugin if they are missing. Supports **macOS** (Intel & Apple Silicon) and **Linux** (x86\_64 & arm64). Windows is not supported.
 - **Declarative Configuration**: Define your MCP servers, Skill repositories, and required API keys in a simple `manifest.yaml`.
 - **Vanilla or Team Modes**: Use it standalone as a quick installer, or point it to a remote Git repository to sync configurations across multiple machines or a development team.
 - **Local Overrides**: Add personal MCP servers or skills without altering the shared configuration.
@@ -206,6 +206,7 @@ oml rollback 2026-02-25-143022
 
 - OpenCode resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json` (injected into shell rc).
 - Skills are symlinked to standard locations to ensure they are discovered by both OpenCode's native loader and Claude Code.
+> **Note on `curl | bash` mode:** oml temporarily clones its own library into `~/.oml/.bootstrap` to make library functions available. This cache is automatically removed at the end of a successful installation.
 
 ---
 

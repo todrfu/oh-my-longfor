@@ -16,7 +16,7 @@
 ## 🚀 特性
 
 - **零依赖引导**：纯 `bash` 编写，仅需 `curl` 和 `git` 即可运行。
-- **工具链管理**：自动检测并安装缺失的 `bun`、`opencode`（官方二进制）和 `oh-my-opencode` 插件。
+- **工具链管理**：自动检测并安装缺失的 `bun`、`opencode`（官方二进制）和 `oh-my-opencode` 插件。支持 **macOS**（Intel & Apple Silicon）和 **Linux**（x86\_64 & arm64）。不支持 Windows。
 - **声明式配置**：在简洁的 `manifest.yaml` 中定义 MCP 服务器、Skill 仓库和所需的 API Key。
 - **纯净模式或团队模式**：既可作为快速安装工具独立使用，也可指向远程 Git 仓库以在多台机器或开发团队间同步配置。
 - **本地覆盖**：无需修改共享配置，即可添加个人的 MCP 服务器或 Skills。
@@ -207,6 +207,7 @@ oml rollback 2026-02-25-143022
 
 - OpenCode 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置（通过 Shell rc 注入）。
 - Skills 被软链接到标准位置，以确保 OpenCode 原生加载器和 Claude Code 都能发现它们。
+> **关于 `curl | bash` 模式的说明**：oml 会临时将自身库文件克隆到 `~/.oml/.bootstrap` 以加载必要的函数。安装成功完成后，该缓存目录会被**自动清除**。
 
 ---
 

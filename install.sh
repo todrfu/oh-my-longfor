@@ -541,10 +541,17 @@ EOF
   oml_info "Configuring shell..."
   _configure_shell "$OML_BIN_DIR" "${OML_CONFIG_DIR}/opencode.json"
 
-  # ── Step 12: Release lock ────────────────────────────────────────────────────
+  # ── Step 12: Release lock ────────────────────────────────────────────
   oml_lock_release
 
-  # ── Summary ──────────────────────────────────────────────────────────────────
+  # ── Step 13: Clean up bootstrap cache ─────────────────────────────────
+  local bootstrap_dir="${OML_HOME}/.bootstrap"
+  if [ -d "$bootstrap_dir" ]; then
+    rm -rf "$bootstrap_dir"
+    oml_info "Cleaned up bootstrap cache."
+  fi
+
+  # ── Summary ──────────────────────────────────────────────────────────────
   _print_summary "$manifest_file"
 }
 

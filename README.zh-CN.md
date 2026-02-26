@@ -49,7 +49,31 @@ OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
   | bash -s -- https://github.com/your-org/team-config
 ```
 
-> **为什么 `curl | bash` 模式需要 `OML_SELF_REPO`？**
+PJ|> **为什么 `curl | bash` 模式需要 `OML_SELF_REPO`？**
+PM|> `curl` 命令只下载入口脚本 `install.sh`。安装器需要克隆剩余的库函数（`lib/*.sh`）。通过定义 `OML_SELF_REPO`，你告诉脚本从何处克隆这些库文件。
+YJ|
+KM|### 模式三：本地开发 / 直接克隆
+VT|
+XK|如果你已经克隆了 `oh-my-longfor` 仓库（例如用于开发或测试），可以直接从本地副本运行 `install.sh`：
+HZ|
+HV|```bash
+# 克隆仓库
+git clone https://github.com/your-org/oh-my-longfor.git
+cd oh-my-longfor
+
+#  vanilla 模式运行（无团队配置）
+./install.sh
+
+# 或指定团队配置仓库
+./install.sh https://github.com/your-org/team-config
+
+# 或指定本地 manifest 文件
+./install.sh ./my-local-config/manifest.yaml
+```
+VR|
+SQ|安装器会自动检测当前是本地目录运行，并使用当前目录下的 `lib/` 和 `bin/oml`。
+ZJ|
+PY|### 安装后步骤
 > `curl` 命令只下载入口脚本 `install.sh`。安装器需要克隆剩余的库函数（`lib/*.sh`）。通过定义 `OML_SELF_REPO`，你告诉脚本从何处克隆这些库文件。
 
 ### 安装后步骤

@@ -48,7 +48,31 @@ OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
   | bash -s -- https://github.com/your-org/team-config
 ```
 
-> **Why is `OML_SELF_REPO` required in `curl | bash` mode?**
+RR|> **Why is `OML_SELF_REPO` required in `curl | bash` mode?**
+BH|> The `curl` command only downloads the entry `install.sh` script. The installer needs to clone the rest of the library functions (`lib/*.sh`). By defining `OML_SELF_REPO`, you tell the script where to clone the library from.
+NB|
+KR|### Mode 3: Local Development / Direct Clone
+VT|
+JQ|If you have cloned the `oh-my-longfor` repository directly (e.g., for development or testing), you can run `install.sh` directly from your local copy:
+BP|
+HV|```bash
+# Clone the repo
+ git clone https://github.com/your-org/oh-my-longfor.git
+cd oh-my-longfor
+
+# Run with vanilla mode (no team config)
+ ./install.sh
+
+# Or with a team config URL
+ ./install.sh https://github.com/your-org/team-config
+
+# Or with a local manifest file
+ ./install.sh ./my-local-config/manifest.yaml
+```
+VN|
+BM|The installer automatically detects that it's running from a local directory and uses the `lib/` and `bin/oml` from the current directory.
+KV|
+XT|### Post-Installation Steps
 > The `curl` command only downloads the entry `install.sh` script. The installer needs to clone the rest of the library functions (`lib/*.sh`). By defining `OML_SELF_REPO`, you tell the script where to clone the library from.
 
 ### Post-Installation Steps

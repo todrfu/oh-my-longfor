@@ -1,0 +1,379 @@
+#!/usr/bin/env bash
+# oh-my-longfor CLI (oml) — Team AI dev environment management
+# Usage: oml <command> [options]
+set -euo pipefail
+
+OML_HOME="${OML_HOME:-$HOME/.oml}"
+OML_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd || echo "$OML_HOME")"
+OML_VERSION="${OML_VERSION:-0.1.0}"
+
+# ── Source all lib modules ────────────────────────────────────────────────────
+_oml_load_libs() {
+  local lib_dir
+
+  # Try script-relative lib/ first (development), then OML_HOME/lib/
+  if [ -d "$OML_SCRIPT_DIR/lib" ]; then
+    lib_dir="$OML_SCRIPT_DIR/lib"
+  elif [ -d "$OML_HOME/lib" ]; then
+    lib_dir="$OML_HOME/lib"
+  else
+    printf '\033[0;31m[oml] ERROR:\033[0m lib/ not found. Is oml installed correctly?\n' >&2
+    printf '\033[0;31m[oml] ERROR:\033[0m Expected: %s/lib/ or %s/lib/\n' "$OML_SCRIPT_DIR" "$OML_HOME" >&2
+    exit 2
+  fi
+
+  # shellcheck source=/dev/null
+  source "$lib_dir/common.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/manifest.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/git.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/skills.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/config.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/env.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/override.sh"
+  # shellcheck source=/dev/null
+  source "$lib_dir/backup.sh"
+}
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+# Resolve the manifest file for the installed team config
+_oml_manifest() {
+  local manifest="${OML_HOME}/repos/team-config/manifest.yaml"
+  if [ ! -f "$manifest" ]; then
+    oml_error "Team config not found at $manifest"
+    oml_error "Run 'oml install <team-config-url>' first."
+    exit 1
+  fi
+  echo "$manifest"
+}
+
+# ── Command: install ─────────────────────────────────────────────────────────
+cmd_install() {
+  local team_config_url="${1:-}"
+  if [ -z "$team_config_url" ]; then
+    oml_error "Usage: oml install <team-config-git-url>"
+    exit 1
+  fi
+
+  local install_script="$OML_SCRIPT_DIR/install.sh"
+  if [ ! -f "$install_script" ]; then
+    oml_error "install.sh not found at $install_script"
+    exit 2
+  fi
+
+  bash "$install_script" "$team_config_url"
+}
+
+# ── Command: update ──────────────────────────────────────────────────────────
+cmd_update() {
+  local manifest
+  manifest="$(_oml_manifest)"
+
+  oml_info "Starting oml update..."
+  oml_lock_acquire || exit 1
+  trap 'oml_lock_release' EXIT INT TERM
+
+  # Pull latest team-config
+  local team_config_dir="${OML_HOME}/repos/team-config"
+  if [ -d "${team_config_dir}/.git" ]; then
+    oml_info "Pulling latest team config..."
+    oml_git_pull "$team_config_dir" || oml_warn "Could not update team config (check errors above)"
+  else
+    oml_info "Team config is a local copy — skipping git pull"
+  fi
+
+  # Sync skill repos
+  oml_info "Syncing skill repositories..."
+  oml_sync_skills "$manifest" || oml_warn "Some skill repos could not be synced"
+
+  # Re-create skill symlinks
+  oml_remove_skill_symlinks
+  oml_create_skill_symlinks
+
+  # Regenerate all configs (backup created inside generate functions)
+  oml_info "Regenerating configs..."
+  oml_generate_opencode_config "$manifest"
+  oml_generate_omo_config "$manifest"
+  oml_generate_env_template "$manifest"
+
+  oml_lock_release
+  oml_success "Update complete."
+  printf "\n"
+  oml_info "Run 'oml status' to see current state."
+}
+
+# ── Command: status ──────────────────────────────────────────────────────────
+cmd_status() {
+  local manifest
+  manifest="$(_oml_manifest 2>/dev/null || echo "")"
+
+  printf "\n  oml Status\n"
+  printf "  ──────────────────────────────────────────\n\n"
+
+  # Team-config repo
+  local team_config_dir="${OML_HOME}/repos/team-config"
+  if [ -d "${team_config_dir}/.git" ]; then
+    local branch last_commit
+    branch="$(git -C "$team_config_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
+    last_commit="$(git -C "$team_config_dir" log -1 --format='%h %s' 2>/dev/null || echo "unknown")"
+    printf "  ${GREEN}✓${NC}  Team config:   %s  [%s]\n" "$branch" "$last_commit"
+  elif [ -d "$team_config_dir" ]; then
+    # shellcheck disable=SC2059
+    printf "  ${YELLOW}~${NC}  Team config:   local copy (not a git repo)\n"
+  else
+    # shellcheck disable=SC2059
+    printf "  ${RED}x${NC}  Team config:   NOT installed\n"
+  fi
+
+  # Skill repos
+  printf "\n  Skill repos:\n"
+  oml_skill_status 2>/dev/null || printf "  (none)\n"
+
+  # Config files
+  printf "\n  Config files:\n"
+  for f in "config/opencode.json" "config/oh-my-opencode.jsonc" "env/.env.template"; do
+    local full="${OML_HOME}/${f}"
+    if [ -f "$full" ]; then
+      local ts
+      ts="$(date -r "$full" '+%Y-%m-%d %H:%M' 2>/dev/null || stat -c '%y' "$full" 2>/dev/null | cut -d. -f1 || echo "unknown")"
+      printf "  ${GREEN}✓${NC}  %-35s  (updated: %s)\n" "$f" "$ts"
+    else
+      printf "  ${RED}✗${NC}  %-35s  MISSING\n" "$f"
+    fi
+  done
+
+  # Env vars
+  if [ -n "$manifest" ]; then
+    printf "\n  Environment variables:\n"
+    oml_check_env "$manifest" 2>/dev/null | sed 's/^/  /' || true
+  fi
+
+  # Personal overrides
+  printf "\n  Personal overrides:\n"
+  oml_override_list 2>/dev/null | sed 's/^/  /' || true
+
+  printf "\n"
+}
+
+# ── Command: doctor ──────────────────────────────────────────────────────────
+cmd_doctor() {
+  local manifest
+  manifest="$(_oml_manifest 2>/dev/null || echo "")"
+
+  printf "\n  oml Doctor — Diagnostic Report\n"
+  printf "  ──────────────────────────────────────────\n\n"
+
+  local all_pass=true
+
+  # Check core dependencies
+  for cmd in git curl python3; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      printf "  ${GREEN}✓${NC}  %s available\n" "$cmd"
+    else
+      printf "  ${RED}✗${NC}  %s NOT found   → Install: %s\n" "$cmd" "$cmd"
+      all_pass=false
+    fi
+  done
+
+  # Check bun / opencode
+  for cmd in bun opencode; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      local ver
+      ver="$("$cmd" --version 2>/dev/null | head -1 || echo 'unknown')"
+      printf "  ${GREEN}✓${NC}  %-12s  %s\n" "$cmd" "$ver"
+    else
+      printf "  ${RED}✗${NC}  %-12s  NOT found\n" "$cmd"
+      all_pass=false
+    fi
+  done
+
+  printf "\n"
+
+  # Check ~/.oml/ structure
+  for d in "" "repos" "config" "overrides" "env"; do
+    local full_path="${OML_HOME}${d:+/$d}"
+    if [ -d "$full_path" ]; then
+      printf "  ${GREEN}✓${NC}  ~/.oml%s exists\n" "${d:+/$d}"
+    else
+      printf "  ${RED}✗${NC}  ~/.oml%s missing  → Run: oml install\n" "${d:+/$d}"
+      all_pass=false
+    fi
+  done
+
+  printf "\n"
+
+  # Check config files
+  for f in "config/opencode.json" "config/oh-my-opencode.jsonc"; do
+    local full="${OML_HOME}/${f}"
+    if [ -f "$full" ]; then
+      if [[ "$f" == *.jsonc ]]; then
+        printf "  ${GREEN}✓${NC}  ~/.oml/%s  exists (JSONC)\n" "$f"
+      elif python3 -c "import json; json.load(open('$full'))" 2>/dev/null; then
+        printf "  ${GREEN}✓${NC}  ~/.oml/%s  valid JSON\n" "$f"
+      else
+        printf "  ${RED}✗${NC}  ~/.oml/%s  INVALID JSON  → Run: oml update\n" "$f"
+        all_pass=false
+      fi
+    else
+      printf "  ${RED}✗${NC}  ~/.oml/%s  missing  → Run: oml update\n" "$f"
+      all_pass=false
+    fi
+  done
+
+  printf "\n"
+
+  # Check env vars if manifest available
+  if [ -n "$manifest" ]; then
+    oml_check_env "$manifest" 2>/dev/null | sed 's/^/  /' || true
+  fi
+
+  printf "\n"
+  if [ "$all_pass" = true ]; then
+    oml_success "All checks passed!"
+  else
+    oml_warn "Some checks failed. See fix suggestions above."
+    exit 1
+  fi
+}
+
+# ── Command: env ─────────────────────────────────────────────────────────────
+cmd_env() {
+  local manifest
+  manifest="$(_oml_manifest)"
+  oml_check_env "$manifest" || true
+}
+
+# ── Command: override ────────────────────────────────────────────────────────
+cmd_override() {
+  local subcmd="${1:-list}"
+  shift || true
+
+  case "$subcmd" in
+    list)
+      oml_override_list
+      ;;
+    add-mcp)
+      local name="${1:-}"; local json_def="${2:-}"
+      if [ -z "$name" ] || [ -z "$json_def" ]; then
+        oml_error "Usage: oml override add-mcp <name> '<json-definition>'"
+        oml_error "Example: oml override add-mcp my-mcp '{\"type\":\"remote\",\"url\":\"https://...\"}'"
+        exit 1
+      fi
+      oml_override_add_mcp "$name" "$json_def"
+      ;;
+    add-skill-repo)
+      local repo_url="${1:-}"; local branch="${2:-main}"
+      if [ -z "$repo_url" ]; then
+        oml_error "Usage: oml override add-skill-repo <git-url> [branch]"
+        exit 1
+      fi
+      oml_override_add_skill_repo "$repo_url" "$branch"
+      ;;
+    remove)
+      local otype="${1:-}"; local name="${2:-}"
+      if [ -z "$otype" ] || [ -z "$name" ]; then
+        oml_error "Usage: oml override remove <mcp|skill> <name>"
+        exit 1
+      fi
+      oml_override_remove "$otype" "$name"
+      ;;
+    *)
+      oml_error "Unknown override subcommand: $subcmd"
+      oml_error "Available: list, add-mcp, add-skill-repo, remove"
+      exit 1
+      ;;
+  esac
+}
+
+# ── Command: rollback ────────────────────────────────────────────────────────
+cmd_rollback() {
+  local timestamp="${1:-}"
+  oml_rollback "$timestamp"
+}
+
+# ── Command: backup list ─────────────────────────────────────────────────────
+cmd_backup() {
+  local subcmd="${1:-list}"
+  case "$subcmd" in
+    list) oml_backup_list ;;
+    *)
+      oml_error "Unknown backup subcommand: $subcmd"
+      oml_error "Available: list"
+      exit 1
+      ;;
+  esac
+}
+
+# ── Command: version ─────────────────────────────────────────────────────────
+cmd_version() {
+  echo "oml version $OML_VERSION"
+}
+
+# ── Help text ────────────────────────────────────────────────────────────────
+cmd_help() {
+  cat <<'HELP'
+
+  oml — oh-my-longfor team AI dev environment manager
+
+  USAGE:
+    oml <command> [options]
+
+  COMMANDS:
+    install <url>          Install from a team-config git URL or local path
+    update                 Pull latest team config and regenerate all configs
+    status                 Show current state of repos, configs, and env vars
+    doctor                 Run diagnostic checks with fix suggestions
+    env                    Show which required env vars are set / missing
+    override <subcommand>  Manage personal MCP/skill additions
+    rollback [timestamp]   Restore configs from a previous backup
+    backup list            List available config backups
+    version                Print oml version
+    help                   Show this help message
+
+  OVERRIDE SUBCOMMANDS:
+    oml override list
+    oml override add-mcp <name> '<json>'
+    oml override add-skill-repo <git-url> [branch]
+    oml override remove <mcp|skill> <name>
+
+  EXAMPLES:
+    oml install https://github.com/your-org/team-config
+    oml update
+    oml status
+    oml doctor
+    oml override add-mcp my-mcp '{"type":"remote","url":"https://my.example.com"}'
+    oml rollback
+    oml rollback 2026-02-25-143022
+
+HELP
+}
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+_oml_load_libs
+
+command="${1:-help}"
+shift || true
+
+case "$command" in
+  install)  cmd_install "$@" ;;
+  update)   cmd_update "$@" ;;
+  status)   cmd_status "$@" ;;
+  doctor)   cmd_doctor "$@" ;;
+  env)      cmd_env "$@" ;;
+  override) cmd_override "$@" ;;
+  rollback) cmd_rollback "$@" ;;
+  backup)   cmd_backup "$@" ;;
+  version|--version|-v) cmd_version ;;
+  help|--help|-h)       cmd_help ;;
+  *)
+    oml_error "Unknown command: $command"
+    oml_error "Run 'oml help' for available commands."
+    exit 1
+    ;;
+esac

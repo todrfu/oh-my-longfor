@@ -1,25 +1,23 @@
-=== shellcheck verification ===
-zsh:4: command not found: shellcheck
-shellcheck: ALL PASSED
+=== task-3-core-utils evidence ===
+Date: Wed Feb 25 14:43:03 UTC 2026
 
-=== Functional Tests ===
---- Test: oml_info ---
+--- Test 1: shellcheck all files ---
+shellcheck: PASS (exit 0)
+
+--- Test 2: oml_info works ---
 [0;34m[oml][0m test message
---- Test: oml_detect_platform ---
+oml_info: PASS
+
+--- Test 3: oml_detect_platform ---
 Platform: darwin
-PASS: platform is darwin
---- Test: oml_check_deps ---
-PASS: dep check for git, curl
---- Test: oml_parse_manifest ---
+oml_detect_platform: PASS
+
+--- Test 4: oml_check_deps ---
+oml_check_deps: PASS
+
+--- Test 5: oml_parse_manifest ---
 MCPs: 5
-Skill repos: 2
-Env vars: 7
-PASS: manifest parsed correctly
+Repos: 2
+oml_parse_manifest: PASS
 
-=== All Task 3 tests PASSED ===
-
-=== shellcheck (after BOLD/OML_VERSION fix) ===
-lib/common.sh: CLEAN
-lib/manifest.sh: CLEAN
-lib/git.sh: CLEAN
-All files: ✅ shellcheck PASSED
+=== END EVIDENCE ===

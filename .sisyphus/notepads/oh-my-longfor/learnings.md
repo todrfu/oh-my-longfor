@@ -89,3 +89,12 @@ oh-my-longfor/
 - shellcheck warning: avoid unused variables — export OML_VERSION, remove or comment BOLD
 - All files pass shellcheck with no warnings
 - Manifest parser tested: 5 MCPs, 2 repos, 7 env vars from example manifest
+
+## [2026-02-25] Task 3: Core Shell Utilities
+- lib/common.sh: logging (oml_info/warn/error/success), platform detection, dep check, lockfile
+- lib/manifest.sh: YAML parser using python3 (primary), yq (fallback), grep/sed (last resort)
+- lib/git.sh: shallow clone by default (--depth 1), graceful pull failures (warn, don't abort)
+- All files pass shellcheck
+- Manifest parser outputs MANIFEST_* variables when eval'd
+- shellcheck SC2034 fix: export OML_VERSION and BOLD since they're consumed by sourcing scripts
+- shellcheck-py 0.11.0.1 (pip3) provides shellcheck binary on macOS arm64 without homebrew

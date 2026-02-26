@@ -413,19 +413,9 @@ main() {
   _print_banner
 
   if [ -z "$team_config_url" ]; then
-    _error "Usage: bash install.sh <team-config-source>"
-    _error ""
-    _error "Accepted sources:"
-    _error "  Remote git repo:  bash install.sh https://github.com/your-org/team-config"
-    _error "  Local directory:  bash install.sh ./example-team-config"
-    _error "  Local manifest:   bash install.sh ./manifest.yaml"
-    _error "  Local manifest:   bash install.sh /absolute/path/to/manifest.yaml"
-    _error ""
-    _error "curl one-liner:"
-    _error "  curl -fsSL https://your-host/install.sh | bash -s -- https://github.com/your-org/team-config"
-    exit 1
+    oml_info "No team config provided. Proceeding with vanilla installation."
+    team_config_url="vanilla"
   fi
-
   _check_platform
   oml_info "Team config: $team_config_url"
   oml_info "OML home: $OML_HOME"
@@ -457,7 +447,20 @@ main() {
   local manifest_file=""
   oml_info "Loading team config..."
 
-  if [[ "$team_config_url" == *.yaml ]] || [[ "$team_config_url" == *.yml ]]; then
+  if [ "$team_config_url" = "vanilla" ]; then
+    # ── Mode 0: Vanilla (no team config) ──────────────────────────────────────
+    mkdir -p "$team_config_dest"
+    cat > "${team_config_dest}/manifest.yaml" << 'EOF'
+version: "1"
+mcps: []
+skills:
+  repos: []
+env: []
+EOF
+    oml_success "Scaffolded vanilla manifest"
+    manifest_file="${team_config_dest}/manifest.yaml"
+
+  elif [[ "$team_config_url" == *.yaml ]] || [[ "$team_config_url" == *.yml ]]; then
     # ── Mode A: Direct path to a manifest.yaml file ──────────────────────────
     local file_dir file_base abs_manifest
     file_dir="$(dirname "$team_config_url")"

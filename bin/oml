@@ -57,10 +57,8 @@ _oml_manifest() {
 cmd_install() {
   local team_config_url="${1:-}"
   if [ -z "$team_config_url" ]; then
-    oml_error "Usage: oml install <git-url | local-dir | manifest.yaml>"
-    exit 1
+    oml_info "No team-config-url provided. Proceeding with vanilla installation."
   fi
-
   local install_script="$OML_SCRIPT_DIR/install.sh"
   if [ ! -f "$install_script" ]; then
     oml_error "install.sh not found at $install_script"
@@ -325,7 +323,7 @@ cmd_help() {
     oml <command> [options]
 
   COMMANDS:
-    install <url>          Install from a team-config git URL or local path
+    install [url]          Install from team-config (or run without args for vanilla mode)
     update                 Pull latest team config and regenerate all configs
     status                 Show current state of repos, configs, and env vars
     doctor                 Run diagnostic checks with fix suggestions

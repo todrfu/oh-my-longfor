@@ -32,7 +32,7 @@
 ```
 管理员维护                         成员执行
 ──────────────────────────────     ────────────────────────────────────
-github.com/your-org/team-config    curl -fsSL .../install.sh | bash -s -- <repo-url>
+github.com/your-org/team-config    OML_SELF_REPO=<oml-url> curl ... | bash -s -- <repo-url>
   └── manifest.yaml                ↓
       • MCPs 列表                   自动安装 opencode + oh-my-opencode
       • Skills 仓库                 自动克隆 Skills 仓库
@@ -119,20 +119,21 @@ env:
 
 管理员需要将 oh-my-longfor 仓库和 team-config 仓库都托管好，然后把安装命令发给团队成员。
 
-**理解两种安装模式：**
+**`curl | bash` 模式必须设置 `OML_SELF_REPO`**
 
-| 模式 | `lib/` 从哪来 | 是否需要 `OML_SELF_REPO` |
+通过 `curl` 只会下载 `install.sh` 一个文件，脚本运行时需要 `lib/` 目录里的函数库。
+因此脚本会自动 clone `OML_SELF_REPO` 指定的仓库来获取这些文件。**如果不设置，默认值是一个占位地址，安装会失败。**
+
+| 安装模式 | `lib/` 从哪来 | 是否需要 `OML_SELF_REPO` |
 |------|-------------|------------------------|
 | `bash install.sh <url>`（本地运行） | 脚本同目录的 `lib/` | 不需要 |
-| `curl \| bash`（远程运行） | 只下载了 install.sh，**没有 lib/** | **需要** — 脚本会 clone `OML_SELF_REPO` 获取 lib |
+| `curl \| bash`（远程运行） | 自动 clone `OML_SELF_REPO` | **必须设置** |
 
-> **为什么 curl \| bash 模式需要额外配置？**
-> `curl` 只下载了 `install.sh` 这一个文件，Step 6-9（克隆 Skills、生成 opencode.json 等）需要 `lib/` 里的函数。
-> 脚本会自动 clone `OML_SELF_REPO` 来获取这些文件。
+管理员有两种方式提供 `OML_SELF_REPO`：
 
-**公网 GitHub 仓库（默认值能用）：**
+**方式 A：修改 install.sh 默认值（推荐）**
 
-如果你的 oh-my-longfor 仓库托管在 GitHub 公网，确保 `install.sh` 第 16 行的默认值改为你的实际仓库地址：
+Fork 本仓库后，将 `install.sh` 第 16 行的默认值改为你的实际仓库地址：
 
 ```bash
 # install.sh 第 16 行 — 改为你的实际地址
@@ -146,9 +147,17 @@ curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install
   | bash -s -- https://github.com/your-org/team-config
 ```
 
-**内网环境（需要显式指定 OML_SELF_REPO）：**
+**方式 B：命令行显式传入**
 
-如果仓库在内网，成员需要在命令前加上 `OML_SELF_REPO`：
+不修改代码，成员在命令前加上环境变量即可（公网、内网均适用）：
+
+```bash
+OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
+  | bash -s -- https://github.com/your-org/team-config
+```
+
+内网示例：
 
 ```bash
 OML_SELF_REPO=https://内网地址/oh-my-longfor \
@@ -164,8 +173,18 @@ OML_SELF_REPO=https://内网地址/oh-my-longfor \
 
 #### 方式 1：curl 一键安装（推荐）
 
+管理员已修改 `install.sh` 默认值的情况（见第 3 步方式 A）：
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
+  | bash -s -- https://github.com/your-org/team-config
+```
+
+或者显式指定 `OML_SELF_REPO`（适用于任何场景）：
+
+```bash
+OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
   | bash -s -- https://github.com/your-org/team-config
 ```
 

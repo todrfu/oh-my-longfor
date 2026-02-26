@@ -153,13 +153,24 @@ _ensure_omo() {
 _add_to_path() {
   local bin_dir="$1"
   local rc_file="$2"
+  local marker="# oml: PATH"
 
   if [ ! -f "$rc_file" ]; then return 0; fi
 
-  # Check if already added
-  if grep -qF "# oml: PATH" "$rc_file" 2>/dev/null; then
+  # Skip if exact path already configured
+  if grep -qF "export PATH=\"${bin_dir}:" "$rc_file" 2>/dev/null; then
     oml_info "PATH already configured in $rc_file"
     return 0
+  fi
+
+  # Remove stale oml PATH entry (different OML_HOME)
+  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
+    local tmpfile
+    tmpfile="$(mktemp)"
+    awk -v m="$marker" 'index($0,m){skip=1;next} skip>0{skip--;next} {print}' "$rc_file" > "$tmpfile"
+    cp "$tmpfile" "$rc_file"
+    rm -f "$tmpfile"
+    oml_info "Updating PATH in $rc_file"
   fi
 
   cat >>"$rc_file" <<EOF
@@ -175,12 +186,24 @@ _add_env_var() {
   local var_name="$1"
   local var_value="$2"
   local rc_file="$3"
+  local marker="# oml: ${var_name}"
 
   if [ ! -f "$rc_file" ]; then return 0; fi
 
-  if grep -qF "# oml: ${var_name}" "$rc_file" 2>/dev/null; then
+  # Skip if exact value already configured
+  if grep -qF "export ${var_name}=\"${var_value}\"" "$rc_file" 2>/dev/null; then
     oml_info "$var_name already configured in $rc_file"
     return 0
+  fi
+
+  # Remove stale oml entry (different value)
+  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
+    local tmpfile
+    tmpfile="$(mktemp)"
+    awk -v m="$marker" 'index($0,m){skip=1;next} skip>0{skip--;next} {print}' "$rc_file" > "$tmpfile"
+    cp "$tmpfile" "$rc_file"
+    rm -f "$tmpfile"
+    oml_info "Updating $var_name in $rc_file"
   fi
 
   cat >>"$rc_file" <<EOF

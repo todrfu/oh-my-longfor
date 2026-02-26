@@ -1,0 +1,70 @@
+# Task 11: End-to-End Lifecycle Test
+# Date: 2026-02-26 01:17 UTC
+
+## Step 1: Fresh install:
+[0;32m[oml] ✓[0m bun found: 1.3.5
+[0;32m[oml] ✓[0m opencode found: 1.2.13
+[0;32m[oml] ✓[0m oh-my-opencode detected.
+[0;32m[oml] ✓[0m Copied local team config: /Users/drfu/work/longfor/QD/digital/oh-my-longfor/example-team-config → /tmp/oml-task11-lifecycle/repos/team-config
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;32m[oml] ✓[0m Generated opencode.json
+[0;32m[oml] ✓[0m Generated oh-my-opencode.jsonc
+[0;32m[oml] ✓[0m Generated .env template at /tmp/oml-task11-lifecycle/env/.env.template
+
+## Step 2: oml status:
+  [1;33m~[0m  Team config:   local copy (not a git repo)
+  [0;32m✓[0m  config/opencode.json                 (updated: 2026-02-26 09:17)
+  [0;32m✓[0m  config/oh-my-opencode.jsonc          (updated: 2026-02-26 09:17)
+  [0;32m✓[0m  env/.env.template                    (updated: 2026-02-26 09:17)
+  [1;33mSome required env vars are missing. Fill in ~/.env.oml and source it.[0m
+  Personal overrides:
+
+## Step 3: oml doctor:
+  [0;32m✓[0m  git available
+  [0;32m✓[0m  curl available
+  [0;32m✓[0m  python3 available
+  [0;32m✓[0m  bun           1.3.5
+  [0;32m✓[0m  opencode      1.2.13
+  [0;32m✓[0m  ~/.oml exists
+  [0;32m✓[0m  ~/.oml/repos exists
+  [0;32m✓[0m  ~/.oml/config exists
+  [0;32m✓[0m  ~/.oml/overrides exists
+  [0;32m✓[0m  ~/.oml/env exists
+  [0;32m✓[0m  ~/.oml/config/opencode.json  valid JSON
+  [0;32m✓[0m  ~/.oml/config/oh-my-opencode.jsonc  exists (JSONC)
+[0;32m[oml] ✓[0m All checks passed!
+
+## Step 4: override add-mcp:
+Added override: test-mcp
+[0;32m[oml] ✓[0m Override saved. Run 'oml update' to apply.
+
+## Step 5: oml update preserves override:
+test-mcp in config: True
+PASS
+
+## Step 6: oml rollback:
+[0;34m[oml][0m Restoring config from backup: 2026-02-26-011727
+[0;34m[oml][0m Restored: /tmp/oml-task11-lifecycle/config/oh-my-opencode.jsonc
+[0;34m[oml][0m Restored: /tmp/oml-task11-lifecycle/config/opencode.json
+[0;32m[oml] ✓[0m Rolled back to backup: 2026-02-26-011727 (2 file(s) restored)
+
+## Step 7: Re-install (idempotent):
+[0;32m[oml] ✓[0m bun found: 1.3.5
+[0;32m[oml] ✓[0m opencode found: 1.2.13
+[0;32m[oml] ✓[0m oh-my-opencode detected.
+[0;32m[oml] ✓[0m Copied local team config: /Users/drfu/work/longfor/QD/digital/oh-my-longfor/example-team-config → /tmp/oml-task11-lifecycle/repos/team-config
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+
+## RESULT: PASS - Full lifecycle verified

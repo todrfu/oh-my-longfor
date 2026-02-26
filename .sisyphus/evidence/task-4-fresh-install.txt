@@ -1,0 +1,63 @@
+# Task 4: Bootstrap install.sh
+# Date: 2026-02-26 01:12 UTC
+
+## Fresh install:
+[0;32m[oml] ✓[0m bun found: 1.3.5
+[0;32m[oml] ✓[0m opencode found: 1.2.13
+[0;32m[oml] ✓[0m oh-my-opencode detected.
+[0;34m[oml][0m Creating ~/.oml/ directory structure...
+[0;32m[oml] ✓[0m Copied local team config: /Users/drfu/work/longfor/QD/digital/oh-my-longfor/example-team-config → /tmp/oml-evidence-fresh/repos/team-config
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[1;33m[oml] WARNING:[0m auth: token requires GITHUB_TOKEN to be set in environment
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;32m[oml] ✓[0m Generated opencode.json
+[0;32m[oml] ✓[0m Generated oh-my-opencode.jsonc
+[0;32m[oml] ✓[0m Generated .env template at /tmp/oml-evidence-fresh/env/.env.template
+[0;32m[oml] ✓[0m Installed oml to /tmp/oml-evidence-fresh/bin/oml
+[0;32m[oml] ✓[0m Added /tmp/oml-evidence-fresh/bin to PATH in /Users/drfu/.zshrc
+[0;32m[oml] ✓[0m Set OPENCODE_CONFIG in /Users/drfu/.zshrc
+
+## Directory structure created:
+total 0
+drwxr-xr-x@  7 drfu  wheel   224 Feb 26 09:12 .
+drwxrwxrwt  55 root  wheel  1760 Feb 26 09:12 ..
+drwxr-xr-x@  3 drfu  wheel    96 Feb 26 09:12 bin
+drwxr-xr-x@  5 drfu  wheel   160 Feb 26 09:12 config
+drwxr-xr-x@  3 drfu  wheel    96 Feb 26 09:12 env
+drwxr-xr-x@  5 drfu  wheel   160 Feb 26 09:12 overrides
+drwxr-xr-x@  4 drfu  wheel   128 Feb 26 09:12 repos
+total 16
+drwxr-xr-x@ 5 drfu  wheel   160 Feb 26 09:12 .
+drwxr-xr-x@ 7 drfu  wheel   224 Feb 26 09:12 ..
+-rw-r--r--@ 1 drfu  wheel   312 Feb 26 09:12 oh-my-opencode.jsonc
+-rw-r--r--@ 1 drfu  wheel  1073 Feb 26 09:12 opencode.json
+-rw-r--r--@ 1 drfu  wheel     0 Feb 26 09:12 symlinks.txt
+
+## opencode.json generated:
+PASS: opencode.json exists
+
+## OPENCODE_CONFIG in shell rc:
+# oml: OPENCODE_CONFIG — added by oh-my-longfor installer
+
+## Idempotent re-run (2nd install, same OML_HOME):
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;34m[oml][0m PATH already configured in /Users/drfu/.zshrc
+[0;34m[oml][0m OPENCODE_CONFIG already configured in /Users/drfu/.zshrc
+
+## No duplicates in rc file:
+oml PATH markers in .zshrc: 1 (should be 1)
+
+## RESULT: PASS

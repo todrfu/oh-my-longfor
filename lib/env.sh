@@ -38,8 +38,15 @@ from datetime import datetime
 manifest_path = sys.argv[1]
 output_path   = sys.argv[2]
 
-with open(manifest_path) as f:
-    data = yaml.safe_load(f)
+try:
+    with open(manifest_path) as f:
+        data = yaml.safe_load(f)
+except yaml.YAMLError as e:
+    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+if data is None:
+    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
+    sys.exit(1)
 
 env_vars = data.get('env', [])
 lines = [
@@ -101,8 +108,15 @@ import sys
 import yaml
 import os
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f)
+try:
+    with open(sys.argv[1]) as f:
+        data = yaml.safe_load(f)
+except yaml.YAMLError as e:
+    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+if data is None:
+    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
+    sys.exit(1)
 
 env_vars = data.get('env', [])
 all_set = True

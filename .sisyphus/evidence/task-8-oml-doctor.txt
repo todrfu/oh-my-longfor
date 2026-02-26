@@ -1,0 +1,38 @@
+# Task 8: oml CLI - doctor subcommand
+# Date: 2026-02-26 01:14 UTC
+
+## oml doctor output:
+
+  oml Doctor — Diagnostic Report
+  ──────────────────────────────────────────
+
+  [0;32m✓[0m  git available
+  [0;32m✓[0m  curl available
+  [0;32m✓[0m  python3 available
+  [0;32m✓[0m  bun           1.3.5
+  [0;32m✓[0m  opencode      1.2.13
+
+  [0;32m✓[0m  ~/.oml exists
+  [0;32m✓[0m  ~/.oml/repos exists
+  [0;32m✓[0m  ~/.oml/config exists
+  [0;32m✓[0m  ~/.oml/overrides exists
+  [0;32m✓[0m  ~/.oml/env exists
+
+  [0;32m✓[0m  ~/.oml/config/opencode.json  valid JSON
+  [0;32m✓[0m  ~/.oml/config/oh-my-opencode.jsonc  exists (JSONC)
+
+  Environment Variable Status:
+  
+    [0;31m❌ missing[0m  CONTEXT7_API_KEY (required)
+    [0;31m❌ missing[0m  SENTRY_TOKEN (required)
+    [0;31m❌ missing[0m  GITHUB_TOKEN (required)
+    [0;31m❌ missing[0m  LINEAR_API_KEY (optional)
+    [0;31m❌ missing[0m  SLACK_BOT_TOKEN (optional)
+    [0;31m❌ missing[0m  OPENAI_API_KEY (optional)
+    [0;32m✅ set[0m  ANTHROPIC_API_KEY (optional)
+  
+  [1;33mSome required env vars are missing. Fill in ~/.env.oml and source it.[0m
+
+[0;32m[oml] ✓[0m All checks passed!
+
+## RESULT: PASS (all structural checks pass)

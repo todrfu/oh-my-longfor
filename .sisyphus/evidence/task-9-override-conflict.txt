@@ -1,0 +1,13 @@
+# Task 9: Personal Override Mechanism - Conflict Resolution (User Wins)
+# Date: 2026-02-26 01:15 UTC
+
+## context7 is in the team manifest with url https://mcp.context7.com/sse
+## Override context7 with a custom URL:
+Added override: context7
+[0;32m[oml] ✓[0m Override saved. Run 'oml update' to apply.
+
+## After oml update, context7 URL should be user's version:
+context7 url: https://MY-CUSTOM-context7.example.com
+PASS: USER WINS - conflict resolution works correctly
+
+## RESULT: PASS

@@ -37,8 +37,15 @@ import yaml
 import json
 
 manifest_path = sys.argv[1]
-with open(manifest_path) as f:
-    data = yaml.safe_load(f)
+try:
+    with open(manifest_path) as f:
+        data = yaml.safe_load(f)
+except yaml.YAMLError as e:
+    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+if data is None:
+    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
+    sys.exit(1)
 
 # Output as shell-sourceable variables
 mcps = data.get('mcps', [])
@@ -121,8 +128,15 @@ oml_get_skill_repo_urls() {
 import sys
 import yaml
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f)
+try:
+    with open(sys.argv[1]) as f:
+        data = yaml.safe_load(f)
+except yaml.YAMLError as e:
+    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+if data is None:
+    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
+    sys.exit(1)
 for repo in data.get('skills', {}).get('repos', []):
     print(repo.get('repo', ''))
 PYEOF
@@ -143,8 +157,15 @@ oml_get_env_var_names() {
 import sys
 import yaml
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f)
+try:
+    with open(sys.argv[1]) as f:
+        data = yaml.safe_load(f)
+except yaml.YAMLError as e:
+    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
+    sys.exit(1)
+if data is None:
+    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
+    sys.exit(1)
 for ev in data.get('env', []):
     print(ev.get('name', ''))
 PYEOF

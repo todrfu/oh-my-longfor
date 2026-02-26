@@ -1,0 +1,26 @@
+# Task 10: Backup + Rollback System
+# Date: 2026-02-26 01:16 UTC
+
+## Step 1: Record opencode.json hash before update:
+Before hash: 5a1579d749ac138e30090136ff3c1656
+
+## Step 2: oml update (triggers backup + regeneration):
+## Backups after update:
+2026-02-26-011607
+
+## Step 3: oml rollback:
+[0;34m[oml][0m Restoring config from backup: 2026-02-26-011607
+[0;34m[oml][0m Restored: /tmp/oml-task10/config/oh-my-opencode.jsonc
+[0;34m[oml][0m Restored: /tmp/oml-task10/config/opencode.json
+[0;32m[oml] ✓[0m Rolled back to backup: 2026-02-26-011607 (2 file(s) restored)
+
+## Step 4: Hash after rollback should match before hash:
+After hash:  5a1579d749ac138e30090136ff3c1656
+PASS: hashes match - rollback restored exact config
+
+## oml backup list:
+  2026-02-26-011607  ( 12K)
+
+[0;34m[oml][0m 1 backup(s) available. Use 'oml rollback [timestamp]' to restore.
+
+## RESULT: PASS

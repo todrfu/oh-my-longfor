@@ -1,0 +1,11 @@
+# Task 8: oml CLI - unknown subcommand handling
+# Date: 2026-02-26 01:14 UTC
+
+## oml nonexistent-command output:
+[0;31m[oml] ERROR:[0m Unknown command: nonexistent-command
+[0;31m[oml] ERROR:[0m Run 'oml help' for available commands.
+
+## Exit code (should be non-zero):
+1
+
+## RESULT: PASS (non-zero exit, helpful error with 'Run oml help')

@@ -1,0 +1,18 @@
+# Task 7: Env Var Status Check
+# Date: 2026-02-26 01:14 UTC
+
+## oml_check_env output (ANTHROPIC_API_KEY is set in current env):
+Environment Variable Status:
+
+  [0;31m❌ missing[0m  CONTEXT7_API_KEY (required)
+  [0;31m❌ missing[0m  SENTRY_TOKEN (required)
+  [0;31m❌ missing[0m  GITHUB_TOKEN (required)
+  [0;31m❌ missing[0m  LINEAR_API_KEY (optional)
+  [0;31m❌ missing[0m  SLACK_BOT_TOKEN (optional)
+  [0;31m❌ missing[0m  OPENAI_API_KEY (optional)
+  [0;32m✅ set[0m  ANTHROPIC_API_KEY (optional)
+
+[1;33mSome required env vars are missing. Fill in ~/.env.oml and source it.[0m
+
+## Confirms: shows set/missing status without showing values
+## RESULT: PASS

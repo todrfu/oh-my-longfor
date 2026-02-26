@@ -1,0 +1,27 @@
+# Task 3: YAML Manifest Parsing
+# Date: 2026-02-26 01:12 UTC
+
+## shellcheck on lib/common.sh lib/manifest.sh lib/git.sh:
+PASS: all clean
+
+## oml_info test:
+[0;34m[oml][0m test message
+
+## oml_detect_platform test:
+darwin
+
+## oml_check_deps git curl:
+
+## oml_parse_manifest with example-team-config/manifest.yaml:
+MANIFEST_VERSION='1'
+MANIFEST_MCP_COUNT='5'
+MANIFEST_SKILL_REPO_COUNT='2'
+MANIFEST_ENV_COUNT='7'
+MANIFEST_MCPS='[{"name": "context7", "type": "remote", "url": "https://mcp.context7.com/sse", "headers": {"Authorization": "Bearer {env:CONTEXT7_API_KEY}"}}, {"name": "sentry", "type": "remote", "url": "https://mcp.sentry.io/sse", "headers": {"Authorization": "Bearer {env:SENTRY_TOKEN}"}}, {"name": "github", "type": "remote", "url": "https://api.githubcopilot.com/mcp/sse", "headers": {"Authorization": "Bearer {env:GITHUB_TOKEN}", "X-GitHub-Api-Version": "2022-11-28"}}, {"name": "linear", "type": "remote", "url": "https://mcp.linear.app/sse", "headers": {"Authorization": "Bearer {env:LINEAR_API_KEY}"}}, {"name": "slack", "type": "remote", "url": "https://mcp.slack.com/sse", "headers": {"Authorization": "Bearer {env:SLACK_BOT_TOKEN}"}}]'
+MANIFEST_SKILL_REPOS='[{"repo": "https://github.com/example/team-ai-skills", "branch": "main", "subdir": "skills/", "auth": null}, {"repo": "https://github.com/example/domain-skills", "branch": "main", "subdir": "skills/", "auth": "token"}]'
+MANIFEST_ENV_VARS='[{"name": "CONTEXT7_API_KEY", "description": "Context7 API key for documentation MCP. Get from https://context7.com/settings (free tier available)", "required": true}, {"name": "SENTRY_TOKEN", "description": "Sentry authentication token for error tracking MCP. Create at https://sentry.io/settings/account/api/auth-tokens/", "required": true}, {"name": "GITHUB_TOKEN", "description": "GitHub personal access token for GitHub MCP and private skill repos. Create at https://github.com/settings/tokens with repo scope", "required": true}, {"name": "LINEAR_API_KEY", "description": "Linear API key for project management MCP. Get from https://linear.app/settings/api", "required": false}, {"name": "SLACK_BOT_TOKEN", "description": "Slack Bot OAuth token for Slack MCP. Create a Slack App at https://api.slack.com/apps", "required": false}, {"name": "OPENAI_API_KEY", "description": "OpenAI API key for GPT-4 model access in oracle agent. Get from https://platform.openai.com/api-keys", "required": false}, {"name": "ANTHROPIC_API_KEY", "description": "Anthropic API key for Claude model access. Get from https://console.anthropic.com/settings/keys", "required": false}]'
+MANIFEST_MCP_0_NAME='context7'
+MANIFEST_MCP_0_URL='https://mcp.context7.com/sse'
+MANIFEST_MCP_1_NAME='sentry'
+
+## RESULT: PASS

@@ -1,0 +1,43 @@
+# Task 11: Error Handling - Invalid Manifest
+# Date: 2026-02-26 01:17 UTC
+
+## Invalid YAML manifest:
+
+\033[0;34m╔═══════════════════════════════════════╗\033[0m
+\033[0;34m║   oh-my-longfor (oml) installer       ║\033[0m
+\033[0;34m║   Team AI Dev Environment Bootstrap   ║\033[0m
+\033[0;34m╚═══════════════════════════════════════╝\033[0m
+
+[0;34m[oml][0m Platform: darwin
+[0;34m[oml][0m Team config: /tmp/oml-bad-manifest-dir
+[0;34m[oml][0m OML home: /tmp/oml-errhandl
+
+[0;34m[oml][0m Checking prerequisites...
+[0;32m[oml] ✓[0m bun found: 1.3.5
+[0;32m[oml] ✓[0m opencode found: 1.2.13
+[0;32m[oml] ✓[0m oh-my-opencode detected.
+[0;34m[oml][0m Creating ~/.oml/ directory structure...
+[0;34m[oml][0m Cloning team config...
+[0;32m[oml] ✓[0m Copied local team config: /tmp/oml-bad-manifest-dir → /tmp/oml-errhandl/repos/team-config
+[0;34m[oml][0m Syncing skill repositories...
+[oml] ERROR: Invalid YAML in manifest: mapping values are not allowed here
+  in "/tmp/oml-errhandl/repos/team-config/manifest.yaml", line 1, column 14
+[1;33m[oml] WARNING:[0m Some skill repos could not be cloned (check errors above)
+[0;34m[oml][0m Initializing personal overrides...
+[0;34m[oml][0m Generating OpenCode configuration...
+[0;34m[oml][0m Generating opencode.json from manifest...
+[oml] ERROR: Invalid YAML in manifest: mapping values are not allowed here
+  in "/tmp/oml-errhandl/repos/team-config/manifest.yaml", line 1, column 14
+
+## Exit code:
+1
+
+## No Python traceback in output:
+0
+PASS: no traceback
+
+## Clean error message present:
+[oml] ERROR: Invalid YAML in manifest: mapping values are not allowed here
+[oml] ERROR: Invalid YAML in manifest: mapping values are not allowed here
+
+## RESULT: PASS - Clean error, no traceback, non-zero exit

@@ -1,0 +1,27 @@
+# Task 9: Personal Override Mechanism - Override Survives Update
+# Date: 2026-02-26 01:15 UTC
+
+## Step 1: Add personal MCP:
+Added override: my-personal-mcp
+[0;32m[oml] ✓[0m Override saved. Run 'oml update' to apply.
+
+## Step 2: Override list shows it:
+Personal Overrides:
+
+  MCP Overrides:
+    - my-personal-mcp (https://my-mcp.example.com)
+
+  Skill Repo Overrides: (none)
+
+## Step 3: oml update runs:
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m Check that the URL is correct and you have access.
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/team-ai-skills
+[0;31m[oml] ERROR:[0m If this is a private repo, set auth: token or auth: ssh in manifest
+[0;31m[oml] ERROR:[0m Failed to clone https://github.com/example/domain-skills
+
+## Step 4: my-personal-mcp in generated opencode.json:
+PASS: my-personal-mcp found in opencode.json
+  url: https://my-mcp.example.com
+
+## RESULT: PASS

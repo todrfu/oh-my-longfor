@@ -86,7 +86,7 @@ _is_interactive() {
   [ -t 0 ]
 }
 
-# ── Install bun if missing ────────────────────────────────────────────────────
+# ── Install bun if missing (required for oh-my-opencode via bunx) ─────────────
 _ensure_bun() {
   if command -v bun >/dev/null 2>&1; then
     oml_success "bun found: $(bun --version 2>/dev/null || echo 'unknown version')"
@@ -123,13 +123,14 @@ _ensure_opencode() {
     return 0
   fi
 
-  oml_info "Installing opencode..."
-  if command -v bun >/dev/null 2>&1; then
-    bun install -g opencode@latest
-  elif command -v npm >/dev/null 2>&1; then
-    npm install -g opencode@latest
-  else
-    oml_error "Neither bun nor npm found. Install one first."
+  oml_info "Installing opencode via official installer..."
+  # opencode ships as a standalone binary — does NOT require bun or npm
+  # Official installer: https://opencode.ai/install
+  curl -fsSL https://opencode.ai/install | bash
+  # Reload PATH (installer places binary in ~/.opencode/bin)
+  export PATH="$HOME/.opencode/bin:$PATH"
+  if ! command -v opencode >/dev/null 2>&1; then
+    oml_error "opencode install failed. Please install manually: https://opencode.ai"
     return 1
   fi
   oml_success "opencode installed."
@@ -137,16 +138,23 @@ _ensure_opencode() {
 
 # ── Install oh-my-opencode if missing ────────────────────────────────────────
 _ensure_omo() {
-  if command -v oh-my-opencode >/dev/null 2>&1 || \
-     [ -f "${HOME}/.config/opencode/oh-my-opencode.json" ]; then
-    oml_success "oh-my-opencode detected."
+  # Detection: oh-my-opencode registers itself as a plugin in opencode.json
+  local oc_json="$HOME/.config/opencode/opencode.json"
+  if [ -f "$oc_json" ] && grep -q '"oh-my-opencode"' "$oc_json" 2>/dev/null; then
+    oml_success "oh-my-opencode already installed."
     return 0
   fi
 
-  oml_info "Setting up oh-my-opencode plugin..."
-  # oh-my-opencode is a plugin — configured in opencode.json
-  oml_info "oh-my-opencode will be configured as an OpenCode plugin."
-  return 0
+  oml_info "Installing oh-my-opencode plugin..."
+  # oh-my-opencode is installed via bunx (requires bun, installed above)
+  # --no-tui: non-interactive mode
+  # --claude=no --gemini=no --copilot=no: safe defaults; user can reconfigure later
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to install oh-my-opencode. Run _ensure_bun first."
+    return 1
+  fi
+  bunx oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=no
+  oml_success "oh-my-opencode installed. Run 'bunx oh-my-opencode install' to configure AI subscriptions."
 }
 
 # ── Idempotent PATH addition ──────────────────────────────────────────────────

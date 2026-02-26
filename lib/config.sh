@@ -14,7 +14,7 @@ set -euo pipefail
 OML_HOME="${OML_HOME:-$HOME/.oml}"
 
 # Generate ~/.oml/config/opencode.json from manifest + personal overrides
-# Also creates symlinks for skill discovery (skills.paths non-functional in OpenCode 1.2.13)
+# Also creates symlinks in ~/.claude/skills/ and ~/.config/opencode/skills/ for skill discovery
 # Usage: oml_generate_opencode_config <manifest-path>
 oml_generate_opencode_config() {
   local manifest_file="$1"
@@ -45,11 +45,9 @@ import sys
 import yaml
 import json
 import os
-
 manifest_path  = sys.argv[1]
 output_path    = sys.argv[2]
 override_file  = sys.argv[3]
-oml_home       = os.environ.get('OML_HOME', os.path.expanduser('~/.oml'))
 
 try:
     with open(manifest_path) as f:
@@ -86,30 +84,11 @@ if os.path.isfile(override_file):
         entry = {k: v for k, v in mcp.items() if k != 'name'}
         team_mcps[name] = entry
 
-# ── skills.paths ─────────────────────────────────────────────────────────────
-# NOTE: skills.paths does not work in OpenCode 1.2.13.
-# We include it for forward compatibility; actual skill loading uses symlinks.
-repos_dir = os.path.join(oml_home, 'repos')
-skill_paths = []
-if os.path.isdir(repos_dir):
-    for repo_dir in sorted(os.listdir(repos_dir)):
-        full_repo = os.path.join(repos_dir, repo_dir)
-        if not os.path.isdir(full_repo):
-            continue
-        # Check for skills/ subdirectory
-        skills_sub = os.path.join(full_repo, 'skills')
-        if os.path.isdir(skills_sub):
-            skill_paths.append(skills_sub)
-        else:
-            skill_paths.append(full_repo)
-
 # ── Assemble config ───────────────────────────────────────────────────────────
 config = {
     '$schema': 'https://opencode.ai/config.json',
     'mcp': team_mcps,
 }
-if skill_paths:
-    config['skills'] = {'paths': skill_paths}
 
 with open(output_path, 'w') as f:
     json.dump(config, f, indent=2)
@@ -117,12 +96,11 @@ with open(output_path, 'w') as f:
 
 print(f"Generated {output_path}")
 print(f"  MCPs: {len(team_mcps)}")
-print(f"  skills.paths entries: {len(skill_paths)} (symlinks used for actual discovery)")
 PYEOF
 
   oml_success "Generated opencode.json"
 
-  # Create skill symlinks for actual OpenCode skill discovery
+  # Create skill symlinks in ~/.claude/skills/ and ~/.config/opencode/skills/
   if command -v oml_create_skill_symlinks >/dev/null 2>&1; then
     oml_create_skill_symlinks
   fi

@@ -319,67 +319,62 @@ _print_summary() {
   printf "\n"
 
   # Dynamic section: show what was configured from manifest
-  if command -v python3 >/dev/null 2>&1 && [ -f "$manifest_file" ]; then
-    python3 - "$manifest_file" << 'PYEOF'
-import sys
-try:
-    import yaml
-except ImportError:
-    sys.exit(0)
-try:
-    with open(sys.argv[1]) as f:
-        data = yaml.safe_load(f)
-except Exception:
-    sys.exit(0)
-if not data:
-    sys.exit(0)
+  # Dynamic section: show what was configured from manifest
+  if command -v bun >/dev/null 2>&1 && [ -f "$manifest_file" ]; then
+    local tmp_manifest
+    tmp_manifest=$(mktemp)
+    if bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+      bun - "$tmp_manifest" << 'BUNEOF'
+const fs = require('fs');
+let data = {};
+try { data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch(e) { process.exit(0); }
 
-BLUE = '\033[0;34m'
-YELLOW = '\033[1;33m'
-NC = '\033[0m'
+const BLUE   = '\x1b[0;34m';
+const YELLOW = '\x1b[1;33m';
+const NC     = '\x1b[0m';
 
-mcps        = data.get('mcps', []) or []
-skill_repos = data.get('skills', {}).get('repos', []) or []
-env_vars    = data.get('env', []) or []
-required_ev = [v for v in env_vars if v.get('required', True)]
-optional_ev = [v for v in env_vars if not v.get('required', True)]
+const mcps      = data.mcps || [];
+const skillRepos = (data.skills && data.skills.repos) || [];
+const envVars   = data.env || [];
+const requiredEv = envVars.filter(v => v.required !== false);
+const optionalEv = envVars.filter(v => v.required === false);
 
-if mcps:
-    print(f"{BLUE}[oml]{NC} MCPs configured ({len(mcps)}):")
-    for m in mcps:
-        print(f"  \u2022 {m.get('name', '?')}")
-    print()
-else:
-    print(f"{BLUE}[oml]{NC} MCPs: (none configured in manifest)")
+if (mcps.length > 0) {
+  console.log(`${BLUE}[oml]${NC} MCPs configured (${mcps.length}):`);
+  for (const m of mcps) console.log(`  \u2022 ${m.name || '?'}`);
+  console.log('');
+} else {
+  console.log(`${BLUE}[oml]${NC} MCPs: (none configured in manifest)`);
+}
 
-if skill_repos:
-    print(f"{BLUE}[oml]{NC} Skill repos ({len(skill_repos)}):")
-    for r in skill_repos:
-        print(f"  \u2022 {r.get('repo', '?')}  (branch: {r.get('branch', 'main')})")
-    print()
-else:
-    print(f"{BLUE}[oml]{NC} Skill repos: (none configured in manifest)")
+if (skillRepos.length > 0) {
+  console.log(`${BLUE}[oml]${NC} Skill repos (${skillRepos.length}):`);
+  for (const r of skillRepos) console.log(`  \u2022 ${r.repo || '?'}  (branch: ${r.branch || 'main'})`);
+  console.log('');
+} else {
+  console.log(`${BLUE}[oml]${NC} Skill repos: (none configured in manifest)`);
+}
 
-if required_ev:
-    print(f"{YELLOW}[oml] \u26a0  API keys you must fill in:{NC}")
-    for v in required_ev:
-        name = v.get('name', '')
-        desc = v.get('description', '')
-        print(f"  \u2022 {name}")
-        if desc:
-            print(f"    {desc}")
-    print()
+if (requiredEv.length > 0) {
+  console.log(`${YELLOW}[oml] \u26a0  API keys you must fill in:${NC}`);
+  for (const v of requiredEv) {
+    console.log(`  \u2022 ${v.name || ''}`);
+    if (v.description) console.log(`    ${v.description}`);
+  }
+  console.log('');
+}
 
-if optional_ev:
-    print(f"{BLUE}[oml]{NC} Optional env vars (for full functionality):")
-    for v in optional_ev:
-        name = v.get('name', '')
-        desc = v.get('description', '')
-        print(f"  \u2022 {name}")
-        if desc:
-            print(f"    {desc}")
-    print()
-PYEOF
+if (optionalEv.length > 0) {
+  console.log(`${BLUE}[oml]${NC} Optional env vars (for full functionality):`);
+  for (const v of optionalEv) {
+    console.log(`  \u2022 ${v.name || ''}`);
+    if (v.description) console.log(`    ${v.description}`);
+  }
+  console.log('');
+}
+BUNEOF
+    fi
+    rm -f "$tmp_manifest"
   fi
 
   printf '%s\n' "${BLUE}[oml]${NC} ─── Next Steps ──────────────────────────────────────────────"
@@ -423,7 +418,7 @@ main() {
 
   # ── Step 1: Check prerequisites ──────────────────────────────────────────────
   oml_info "Checking prerequisites..."
-  oml_check_deps git curl python3
+  oml_check_deps git curl
 
   # ── Step 1b: Bootstrap lib files (curl|bash mode) ────────────────────────────
   _bootstrap_script_dir || true

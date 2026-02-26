@@ -16,7 +16,7 @@ oml_override_init() {
   mkdir -p "$OML_OVERRIDES_DIR"
 
   if [ ! -f "${OML_OVERRIDES_DIR}/mcps.yaml" ]; then
-    cat >"${OML_OVERRIDES_DIR}/mcps.yaml" <<'EOF'
+    cat >"${OML_OVERRIDES_DIR}/mcps.yaml" <<'YAML_EOF'
 # oh-my-longfor Personal MCP Overrides
 # Add your personal MCPs here. These are MERGED on top of the team config.
 # When the same MCP name exists in team config AND here, YOUR definition wins.
@@ -28,11 +28,11 @@ oml_override_init() {
 #     headers:
 #       Authorization: "Bearer {env:MY_MCP_TOKEN}"
 mcps: []
-EOF
+YAML_EOF
   fi
 
   if [ ! -f "${OML_OVERRIDES_DIR}/skills.yaml" ]; then
-    cat >"${OML_OVERRIDES_DIR}/skills.yaml" <<'EOF'
+    cat >"${OML_OVERRIDES_DIR}/skills.yaml" <<'YAML_EOF'
 # oh-my-longfor Personal Skill Repo Overrides
 # Add your personal skill repos here. These are APPENDED to the team config.
 #
@@ -42,11 +42,11 @@ EOF
 #     subdir: "skills/"
 #     auth: null
 repos: []
-EOF
+YAML_EOF
   fi
 
   if [ ! -f "${OML_OVERRIDES_DIR}/omo.yaml" ]; then
-    cat >"${OML_OVERRIDES_DIR}/omo.yaml" <<'EOF'
+    cat >"${OML_OVERRIDES_DIR}/omo.yaml" <<'YAML_EOF'
 # oh-my-longfor Personal oh-my-opencode Overrides
 # These are deep-merged on top of team oh-my-opencode settings.
 # YOUR values win on conflict.
@@ -59,7 +59,7 @@ agents: {}
 models: {}
 disabled_mcps: []
 disabled_skills: []
-EOF
+YAML_EOF
   fi
 }
 
@@ -72,42 +72,60 @@ oml_override_add_mcp() {
 
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to modify override files"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to modify override files"
     return 1
   fi
 
-  python3 - "${OML_OVERRIDES_DIR}/mcps.yaml" "$name" "$json_def" << 'PYEOF'
-import sys
-import yaml
-import json
+  local override_file="${OML_OVERRIDES_DIR}/mcps.yaml"
+  local tmp_override
+  tmp_override=$(mktemp)
+  
+  if ! bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null; then
+    echo '{"mcps":[]}' > "$tmp_override"
+  fi
 
-override_file = sys.argv[1]
-mcp_name      = sys.argv[2]
-mcp_def_json  = sys.argv[3]
+  local tmp_out
+  tmp_out=$(mktemp)
 
-with open(override_file) as f:
-    data = yaml.safe_load(f) or {}
+  bun - "$tmp_override" "$name" "$json_def" "$tmp_out" << 'BUNEOF'
+const fs = require('fs');
 
-mcps = data.get('mcps', [])
-mcp_def = json.loads(mcp_def_json)
-mcp_def['name'] = mcp_name
+const overrideFile = process.argv[2];
+const mcpName      = process.argv[3];
+const mcpDefJson   = process.argv[4];
+const outJsonFile  = process.argv[5];
 
-# Replace existing entry with same name, or append
-existing = next((i for i, m in enumerate(mcps) if m.get('name') == mcp_name), None)
-if existing is not None:
-    mcps[existing] = mcp_def
-    print(f"Updated override: {mcp_name}")
-else:
-    mcps.append(mcp_def)
-    print(f"Added override: {mcp_name}")
+let data = { mcps: [] };
+try { data = JSON.parse(fs.readFileSync(overrideFile, 'utf8')); } catch (e) {}
 
-data['mcps'] = mcps
-with open(override_file, 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
-PYEOF
+if (!data.mcps) data.mcps = [];
 
-  oml_success "Override saved. Run 'oml update' to apply."
+let mcpDef = {};
+try { mcpDef = JSON.parse(mcpDefJson); } catch(e) { 
+  console.error("Invalid JSON provided for MCP definition");
+  process.exit(1);
+}
+
+mcpDef.name = mcpName;
+
+const existingIndex = data.mcps.findIndex(m => m.name === mcpName);
+if (existingIndex !== -1) {
+  data.mcps[existingIndex] = mcpDef;
+  console.log(`Updated override: ${mcpName}`);
+} else {
+  data.mcps.push(mcpDef);
+  console.log(`Added override: ${mcpName}`);
+}
+
+fs.writeFileSync(outJsonFile, JSON.stringify(data, null, 2));
+BUNEOF
+
+  if bunx -y js-yaml "$tmp_out" > "$override_file" 2>/dev/null; then
+    oml_success "Override saved. Run 'oml update' to apply."
+  fi
+  
+  rm -f "$tmp_override" "$tmp_out"
 }
 
 # Add a personal skill repo override
@@ -118,39 +136,52 @@ oml_override_add_skill_repo() {
 
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to modify override files"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to modify override files"
     return 1
   fi
 
-  python3 - "${OML_OVERRIDES_DIR}/skills.yaml" "$repo_url" "$branch" << 'PYEOF'
-import sys
-import yaml
+  local override_file="${OML_OVERRIDES_DIR}/skills.yaml"
+  local tmp_override
+  tmp_override=$(mktemp)
+  
+  if ! bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null; then
+    echo '{"repos":[]}' > "$tmp_override"
+  fi
 
-override_file = sys.argv[1]
-repo_url      = sys.argv[2]
-branch        = sys.argv[3]
+  local tmp_out
+  tmp_out=$(mktemp)
 
-with open(override_file) as f:
-    data = yaml.safe_load(f) or {}
+  bun - "$tmp_override" "$repo_url" "$branch" "$tmp_out" << 'BUNEOF'
+const fs = require('fs');
 
-repos = data.get('repos', [])
+const overrideFile = process.argv[2];
+const repoUrl      = process.argv[3];
+const branch       = process.argv[4];
+const outJsonFile  = process.argv[5];
 
-# Don't add duplicate
-if any(r.get('repo') == repo_url for r in repos):
-    print(f"Already exists: {repo_url}")
-    sys.exit(0)
+let data = { repos: [] };
+try { data = JSON.parse(fs.readFileSync(overrideFile, 'utf8')); } catch (e) {}
 
-repos.append({'repo': repo_url, 'branch': branch, 'subdir': 'skills/', 'auth': None})
-data['repos'] = repos
+if (!data.repos) data.repos = [];
 
-with open(override_file, 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+const exists = data.repos.some(r => r.repo === repoUrl);
+if (exists) {
+  console.log(`Already exists: ${repoUrl}`);
+  process.exit(0);
+}
 
-print(f"Added skill repo: {repo_url}")
-PYEOF
+data.repos.push({ repo: repoUrl, branch: branch, subdir: 'skills/', auth: null });
+console.log(`Added skill repo: ${repoUrl}`);
 
-  oml_success "Override saved. Run 'oml update' to apply."
+fs.writeFileSync(outJsonFile, JSON.stringify(data, null, 2));
+BUNEOF
+
+  if [ -s "$tmp_out" ] && bunx -y js-yaml "$tmp_out" > "$override_file" 2>/dev/null; then
+    oml_success "Override saved. Run 'oml update' to apply."
+  fi
+  
+  rm -f "$tmp_override" "$tmp_out"
 }
 
 # Remove an override entry by type and name
@@ -161,54 +192,84 @@ oml_override_remove() {
 
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to modify override files"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to modify override files"
     return 1
   fi
 
+  local override_file tmp_override tmp_out
+  
   case "$override_type" in
     mcp)
-      python3 - "${OML_OVERRIDES_DIR}/mcps.yaml" "$identifier" << 'PYEOF'
-import sys
-import yaml
+      override_file="${OML_OVERRIDES_DIR}/mcps.yaml"
+      tmp_override=$(mktemp)
+      bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null || echo '{"mcps":[]}' > "$tmp_override"
+      tmp_out=$(mktemp)
+      
+      bun - "$tmp_override" "$identifier" "$tmp_out" << 'BUNEOF'
+const fs = require('fs');
+const inFile = process.argv[2];
+const target = process.argv[3];
+const outFile = process.argv[4];
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f) or {}
+let data = { mcps: [] };
+try { data = JSON.parse(fs.readFileSync(inFile, 'utf8')); } catch(e) {}
+if (!data.mcps) data.mcps = [];
 
-before = len(data.get('mcps', []))
-data['mcps'] = [m for m in data.get('mcps', []) if m.get('name') != sys.argv[2]]
-after = len(data['mcps'])
+const before = data.mcps.length;
+data.mcps = data.mcps.filter(m => m.name !== target);
+const after = data.mcps.length;
 
-with open(sys.argv[1], 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+if (before > after) {
+  console.log(`Removed MCP override: ${target}`);
+} else {
+  console.log(`No MCP override found with name: ${target}`);
+}
 
-if before > after:
-    print(f"Removed MCP override: {sys.argv[2]}")
-else:
-    print(f"No MCP override found with name: {sys.argv[2]}")
-PYEOF
+fs.writeFileSync(outFile, JSON.stringify(data, null, 2));
+BUNEOF
+
+      if bunx -y js-yaml "$tmp_out" > "$override_file" 2>/dev/null; then
+        : # written successfully
+      fi
+      rm -f "$tmp_override" "$tmp_out"
       ;;
+      
     skill)
-      python3 - "${OML_OVERRIDES_DIR}/skills.yaml" "$identifier" << 'PYEOF'
-import sys
-import yaml
+      override_file="${OML_OVERRIDES_DIR}/skills.yaml"
+      tmp_override=$(mktemp)
+      bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null || echo '{"repos":[]}' > "$tmp_override"
+      tmp_out=$(mktemp)
+      
+      bun - "$tmp_override" "$identifier" "$tmp_out" << 'BUNEOF'
+const fs = require('fs');
+const inFile = process.argv[2];
+const target = process.argv[3];
+const outFile = process.argv[4];
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f) or {}
+let data = { repos: [] };
+try { data = JSON.parse(fs.readFileSync(inFile, 'utf8')); } catch(e) {}
+if (!data.repos) data.repos = [];
 
-before = len(data.get('repos', []))
-data['repos'] = [r for r in data.get('repos', []) if r.get('repo') != sys.argv[2]]
-after = len(data['repos'])
+const before = data.repos.length;
+data.repos = data.repos.filter(r => r.repo !== target);
+const after = data.repos.length;
 
-with open(sys.argv[1], 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+if (before > after) {
+  console.log(`Removed skill repo override: ${target}`);
+} else {
+  console.log(`No skill repo override found: ${target}`);
+}
 
-if before > after:
-    print(f"Removed skill repo override: {sys.argv[2]}")
-else:
-    print(f"No skill repo override found: {sys.argv[2]}")
-PYEOF
+fs.writeFileSync(outFile, JSON.stringify(data, null, 2));
+BUNEOF
+
+      if bunx -y js-yaml "$tmp_out" > "$override_file" 2>/dev/null; then
+        : # written successfully
+      fi
+      rm -f "$tmp_override" "$tmp_out"
       ;;
+      
     *)
       oml_error "Unknown override type: $override_type (expected: mcp or skill)"
       return 1
@@ -221,42 +282,60 @@ PYEOF
 oml_override_list() {
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to read override files"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to read override files"
     return 1
   fi
 
-  python3 - "${OML_OVERRIDES_DIR}/mcps.yaml" "${OML_OVERRIDES_DIR}/skills.yaml" << 'PYEOF'
-import sys
-import yaml
+  local mcp_file="${OML_OVERRIDES_DIR}/mcps.yaml"
+  local skill_file="${OML_OVERRIDES_DIR}/skills.yaml"
+  
+  local tmp_mcp tmp_skill
+  tmp_mcp=$(mktemp)
+  tmp_skill=$(mktemp)
+  
+  bunx -y js-yaml "$mcp_file" > "$tmp_mcp" 2>/dev/null || echo '{"mcps":[]}' > "$tmp_mcp"
+  bunx -y js-yaml "$skill_file" > "$tmp_skill" 2>/dev/null || echo '{"repos":[]}' > "$tmp_skill"
 
-with open(sys.argv[1]) as f:
-    mcp_data = yaml.safe_load(f) or {}
-with open(sys.argv[2]) as f:
-    skill_data = yaml.safe_load(f) or {}
+  bun - "$tmp_mcp" "$tmp_skill" << 'BUNEOF'
+const fs = require('fs');
 
-mcps  = mcp_data.get('mcps', [])
-repos = skill_data.get('repos', [])
+const mcpFile = process.argv[2];
+const skillFile = process.argv[3];
 
-print("Personal Overrides:")
-print("")
+let mcpData = { mcps: [] };
+let skillData = { repos: [] };
 
-if mcps:
-    print("  MCP Overrides:")
-    for m in mcps:
-        print(f"    - {m.get('name')} ({m.get('url', 'no url')})")
-else:
-    print("  MCP Overrides: (none)")
+try { mcpData = JSON.parse(fs.readFileSync(mcpFile, 'utf8')); } catch(e) {}
+try { skillData = JSON.parse(fs.readFileSync(skillFile, 'utf8')); } catch(e) {}
 
-print("")
+const mcps = mcpData.mcps || [];
+const repos = skillData.repos || [];
 
-if repos:
-    print("  Skill Repo Overrides:")
-    for r in repos:
-        print(f"    - {r.get('repo')} (branch: {r.get('branch', 'main')})")
-else:
-    print("  Skill Repo Overrides: (none)")
-PYEOF
+console.log('Personal Overrides:\n');
+
+if (mcps.length > 0) {
+  console.log('  MCP Overrides:');
+  for (const m of mcps) {
+    console.log(`    - ${m.name} (${m.url || 'local command'})`);
+  }
+} else {
+  console.log('  MCP Overrides: (none)');
+}
+
+console.log('');
+
+if (repos.length > 0) {
+  console.log('  Skill Repo Overrides:');
+  for (const r of repos) {
+    console.log(`    - ${r.repo} (branch: ${r.branch || 'main'})`);
+  }
+} else {
+  console.log('  Skill Repo Overrides: (none)');
+}
+BUNEOF
+
+  rm -f "$tmp_mcp" "$tmp_skill"
 }
 
 # Merge personal MCP overrides into a list of MCPs from the team manifest
@@ -267,29 +346,43 @@ oml_merge_mcp_overrides() {
 
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
+  if ! command -v bun >/dev/null 2>&1; then
     echo "$team_mcps_json"
     return
   fi
 
-  python3 - "${OML_OVERRIDES_DIR}/mcps.yaml" "$team_mcps_json" << 'PYEOF'
-import sys
-import yaml
-import json
+  local override_file="${OML_OVERRIDES_DIR}/mcps.yaml"
+  local tmp_override
+  tmp_override=$(mktemp)
+  bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null || echo '{"mcps":[]}' > "$tmp_override"
 
-with open(sys.argv[1]) as f:
-    override_data = yaml.safe_load(f) or {}
+  bun - "$tmp_override" "$team_mcps_json" << 'BUNEOF'
+const fs = require('fs');
 
-team_mcps     = json.loads(sys.argv[2])
-override_mcps = override_data.get('mcps', [])
+const overrideFile = process.argv[2];
+const teamMcpsStr = process.argv[3];
 
-# Build merged dict: team first, then personal overrides win
-merged = {m['name']: m for m in team_mcps}
-for m in override_mcps:
-    merged[m['name']] = m
+let overrideData = { mcps: [] };
+try { overrideData = JSON.parse(fs.readFileSync(overrideFile, 'utf8')); } catch(e) {}
 
-print(json.dumps(list(merged.values()), indent=2))
-PYEOF
+let teamMcps = [];
+try { teamMcps = JSON.parse(teamMcpsStr); } catch(e) {}
+
+const overrideMcps = overrideData.mcps || [];
+
+const merged = {};
+for (const m of teamMcps) {
+  if (m.name) merged[m.name] = m;
+}
+
+for (const m of overrideMcps) {
+  if (m.name) merged[m.name] = m;
+}
+
+console.log(JSON.stringify(Object.values(merged), null, 2));
+BUNEOF
+
+  rm -f "$tmp_override"
 }
 
 # Get personal skill repos as JSON array for inclusion in config
@@ -298,19 +391,25 @@ PYEOF
 oml_get_override_skill_repos() {
   oml_override_init
 
-  if ! command -v python3 >/dev/null 2>&1; then
+  if ! command -v bun >/dev/null 2>&1; then
     echo "[]"
     return
   fi
 
-  python3 - "${OML_OVERRIDES_DIR}/skills.yaml" << 'PYEOF'
-import sys
-import yaml
-import json
+  local override_file="${OML_OVERRIDES_DIR}/skills.yaml"
+  local tmp_override
+  tmp_override=$(mktemp)
+  bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null || echo '{"repos":[]}' > "$tmp_override"
 
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f) or {}
+  bun - "$tmp_override" << 'BUNEOF'
+const fs = require('fs');
+const overrideFile = process.argv[2];
 
-print(json.dumps(data.get('repos', []), indent=2))
-PYEOF
+let data = { repos: [] };
+try { data = JSON.parse(fs.readFileSync(overrideFile, 'utf8')); } catch(e) {}
+
+console.log(JSON.stringify(data.repos || [], null, 2));
+BUNEOF
+
+  rm -f "$tmp_override"
 }

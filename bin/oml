@@ -170,7 +170,7 @@ cmd_doctor() {
   local all_pass=true
 
   # Check core dependencies
-  for cmd in git curl python3; do
+  for cmd in git curl bun; do
     if command -v "$cmd" >/dev/null 2>&1; then
       printf "  ${GREEN}✓${NC}  %s available\n" "$cmd"
     else
@@ -212,8 +212,11 @@ cmd_doctor() {
     if [ -f "$full" ]; then
       if [[ "$f" == *.jsonc ]]; then
         printf "  ${GREEN}✓${NC}  ~/.oml/%s  exists (JSONC)\n" "$f"
-      elif python3 -c "import json; json.load(open('$full'))" 2>/dev/null; then
-        printf "  ${GREEN}✓${NC}  ~/.oml/%s  valid JSON\n" "$f"
+      elif bun - << BUNEOF 2>/dev/null; then
+import { readFileSync } from 'fs';
+try { JSON.parse(readFileSync('${full}', 'utf8')); } catch(e) { process.exit(1); }
+BUNEOF
+        printf "  ${GREEN}✓${NC}  ~/.oml/%s  valid JSONC\n" "$f"
       else
         printf "  ${RED}✗${NC}  ~/.oml/%s  INVALID JSON  → Run: oml update\n" "$f"
         all_pass=false

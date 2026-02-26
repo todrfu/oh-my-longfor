@@ -21,8 +21,8 @@ oml_generate_opencode_config() {
   local config_dir="${OML_HOME}/config"
   local output_file="${config_dir}/opencode.json"
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to generate opencode.json"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to generate opencode.json"
     return 1
   fi
 
@@ -40,78 +40,79 @@ oml_generate_opencode_config() {
 
   oml_info "Generating opencode.json from manifest..."
 
-  python3 - "$manifest_file" "$output_file" "$override_mcps_file" << 'PYEOF'
-import sys
-import yaml
-import json
-import os
-manifest_path  = sys.argv[1]
-output_path    = sys.argv[2]
-override_file  = sys.argv[3]
+  local tmp_manifest
+  tmp_manifest=$(mktemp)
+  if ! bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+    oml_error "Invalid YAML in manifest: $manifest_file"
+    rm -f "$tmp_manifest"
+    return 1
+  fi
 
-try:
-    with open(manifest_path) as f:
-        data = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
-    sys.exit(1)
-if data is None:
-    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
-    sys.exit(1)
+  local tmp_override
+  tmp_override=$(mktemp)
+  if [ -f "$override_mcps_file" ]; then
+    if ! bunx -y js-yaml "$override_mcps_file" > "$tmp_override" 2>/dev/null; then
+      oml_error "Invalid YAML in overrides: $override_mcps_file"
+      rm -f "$tmp_manifest" "$tmp_override"
+      return 1
+    fi
+  else
+    echo "{}" > "$tmp_override"
+  fi
 
-# ── MCPs ──────────────────────────────────────────────────────────────────────────────
-team_mcps = {}
-for mcp in data.get('mcps', []):
-    name = mcp.get('name')
-    if not name:
-        continue
-    mcp_type = mcp.get('type', 'remote')
-    if mcp_type == 'local':
-        # stdio transport: command is an array, optional environment dict
-        entry = {'type': 'local'}
-        if 'command' in mcp:
-            entry['command'] = mcp['command']
-        if 'environment' in mcp:
-            entry['environment'] = mcp['environment']
-    else:
-        # remote/SSE transport
-        entry = {
-            'type': 'remote',
-            'url':  mcp.get('url', ''),
-        }
-        if 'headers' in mcp:
-            entry['headers'] = mcp['headers']
-    if 'enabled' in mcp:
-        entry['enabled'] = mcp['enabled']
-    if 'timeout' in mcp:
-        entry['timeout'] = mcp['timeout']
-    team_mcps[name] = entry
+  bun - "$tmp_manifest" "$tmp_override" "$output_file" << 'BUNEOF'
+const fs = require('fs');
 
-# Apply personal overrides (user wins on conflict)
-if os.path.isfile(override_file):
-    with open(override_file) as f:
-        override_data = yaml.safe_load(f) or {}
-    for mcp in override_data.get('mcps', []):
-        name = mcp.get('name')
-        if not name:
-            continue
-        entry = {k: v for k, v in mcp.items() if k != 'name'}
-        team_mcps[name] = entry
+const manifestPath = process.argv[2];
+const overridePath = process.argv[3];
+const outputPath = process.argv[4];
 
-# ── Assemble config ───────────────────────────────────────────────────────────
-config = {
-    '$schema': 'https://opencode.ai/config.json',
-    'mcp': team_mcps,
+let manifest = {};
+try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) {}
+
+let override = {};
+try { override = JSON.parse(fs.readFileSync(overridePath, 'utf8')); } catch (e) {}
+
+const teamMcps = {};
+for (const mcp of manifest.mcps || []) {
+  if (!mcp.name) continue;
+  
+  const entry = { type: mcp.type || 'remote' };
+  
+  if (entry.type === 'local') {
+    if (mcp.command) entry.command = mcp.command;
+    if (mcp.environment) entry.environment = mcp.environment;
+  } else {
+    entry.url = mcp.url || '';
+    if (mcp.headers) entry.headers = mcp.headers;
+  }
+  
+  if (mcp.enabled !== undefined) entry.enabled = mcp.enabled;
+  if (mcp.timeout !== undefined) entry.timeout = mcp.timeout;
+  
+  teamMcps[mcp.name] = entry;
 }
 
-with open(output_path, 'w') as f:
-    json.dump(config, f, indent=2)
-    f.write('\n')
+for (const mcp of override.mcps || []) {
+  if (!mcp.name) continue;
+  const entry = {};
+  for (const [k, v] of Object.entries(mcp)) {
+    if (k !== 'name') entry[k] = v;
+  }
+  teamMcps[mcp.name] = entry;
+}
 
-print(f"Generated {output_path}")
-print(f"  MCPs: {len(team_mcps)}")
-PYEOF
+const config = {
+  $schema: 'https://opencode.ai/config.json',
+  mcp: teamMcps
+};
 
+fs.writeFileSync(outputPath, JSON.stringify(config, null, 2) + '\n');
+const count = Object.keys(teamMcps).length;
+console.log(`Generated ${outputPath}\n  MCPs: ${count}`);
+BUNEOF
+
+  rm -f "$tmp_manifest" "$tmp_override"
   oml_success "Generated opencode.json"
 
   # Create skill symlinks in ~/.claude/skills/ and ~/.config/opencode/skills/
@@ -127,8 +128,8 @@ oml_generate_omo_config() {
   local config_dir="${OML_HOME}/config"
   local output_file="${config_dir}/oh-my-opencode.jsonc"
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    oml_error "python3 is required to generate oh-my-opencode.jsonc"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to generate oh-my-opencode.jsonc"
     return 1
   fi
 
@@ -140,66 +141,75 @@ oml_generate_omo_config() {
   mkdir -p "$config_dir"
 
   local override_omo_file="${OML_HOME}/overrides/omo.yaml"
-  local repos_dir="${OML_HOME}/repos"
 
   oml_info "Generating oh-my-opencode.jsonc from manifest..."
 
-  python3 - "$manifest_file" "$output_file" "$override_omo_file" "$repos_dir" << 'PYEOF'
-import sys
-import yaml
-import json
-import os
+  local tmp_manifest
+  tmp_manifest=$(mktemp)
+  if ! bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+    oml_error "Invalid YAML in manifest: $manifest_file"
+    rm -f "$tmp_manifest"
+    return 1
+  fi
 
-manifest_path  = sys.argv[1]
-output_path    = sys.argv[2]
-override_file  = sys.argv[3]
-repos_dir      = sys.argv[4]
+  local tmp_override
+  tmp_override=$(mktemp)
+  if [ -f "$override_omo_file" ]; then
+    if ! bunx -y js-yaml "$override_omo_file" > "$tmp_override" 2>/dev/null; then
+      oml_error "Invalid YAML in overrides: $override_omo_file"
+      rm -f "$tmp_manifest" "$tmp_override"
+      return 1
+    fi
+  else
+    echo "{}" > "$tmp_override"
+  fi
 
-try:
-    with open(manifest_path) as f:
-        data = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
-    sys.exit(1)
-if data is None:
-    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
-    sys.exit(1)
+  bun - "$tmp_manifest" "$tmp_override" "$output_file" << 'BUNEOF'
+const fs = require('fs');
 
-omo_overrides = data.get('omo_overrides', {}) or {}
+const manifestPath = process.argv[2];
+const overridePath = process.argv[3];
+const outputPath = process.argv[4];
 
-# Start with team base config
-config = {
-    '$schema': 'https://raw.githubusercontent.com/drrcknlsn/oh-my-opencode/main/schema.json',
-    'agents': dict(omo_overrides.get('agents', {}) or {}),
-    'models': dict(omo_overrides.get('models', {}) or {}),
-    'disabled_mcps':    list(omo_overrides.get('disabled_mcps', []) or []),
-    'disabled_skills':  list(omo_overrides.get('disabled_skills', []) or []),
+let manifest = {};
+try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) {}
+
+let userOverrides = {};
+try { userOverrides = JSON.parse(fs.readFileSync(overridePath, 'utf8')); } catch (e) {}
+
+const omo_overrides = manifest.omo_overrides || {};
+
+const config = {
+  $schema: 'https://raw.githubusercontent.com/drrcknlsn/oh-my-opencode/main/schema.json',
+  agents: omo_overrides.agents || {},
+  models: omo_overrides.models || {},
+  disabled_mcps: omo_overrides.disabled_mcps || [],
+  disabled_skills: omo_overrides.disabled_skills || [],
+};
+
+for (const key of ['agents', 'models']) {
+  if (userOverrides[key]) {
+    config[key] = { ...config[key], ...userOverrides[key] };
+  }
 }
 
-# Apply personal omo overrides (deep merge, user wins)
-if os.path.isfile(override_file):
-    with open(override_file) as f:
-        user_overrides = yaml.safe_load(f) or {}
-    for key in ('agents', 'models'):
-        if user_overrides.get(key):
-            config[key].update(user_overrides[key])
-    for key in ('disabled_mcps', 'disabled_skills'):
-        if user_overrides.get(key):
-            # Merge lists, deduplicate
-            combined = list(set(config.get(key, []) + list(user_overrides[key])))
-            config[key] = combined
+for (const key of ['disabled_mcps', 'disabled_skills']) {
+  if (userOverrides[key] && Array.isArray(userOverrides[key])) {
+    const combined = [...(config[key] || []), ...userOverrides[key]];
+    config[key] = [...new Set(combined)]; // deduplicate
+  }
+}
 
-with open(output_path, 'w') as f:
-    # Write as JSONC with a header comment
-    f.write('// oh-my-longfor generated oh-my-opencode config\n')
-    f.write('// Regenerated by: oml update\n')
-    f.write('// Edit ~/.oml/overrides/omo.yaml for personal overrides.\n')
-    json.dump(config, f, indent=2)
-    f.write('\n')
+let outContent = '// oh-my-longfor generated oh-my-opencode config\n';
+outContent += '// Regenerated by: oml update\n';
+outContent += '// Edit ~/.oml/overrides/omo.yaml for personal overrides.\n';
+outContent += JSON.stringify(config, null, 2) + '\n';
 
-print(f"Generated {output_path}")
-PYEOF
+fs.writeFileSync(outputPath, outContent);
+console.log(`Generated ${outputPath}`);
+BUNEOF
 
+  rm -f "$tmp_manifest" "$tmp_override"
   oml_success "Generated oh-my-opencode.jsonc"
 }
 

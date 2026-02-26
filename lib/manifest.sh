@@ -1,172 +1,115 @@
 #!/usr/bin/env bash
-# oh-my-longfor manifest parser utilities
+# oh-my-longfor manifest parsing utilities
+# Helpers to extract info from manifest.yaml
 set -euo pipefail
 
 # shellcheck source=lib/common.sh
 # source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-# Parse a YAML manifest file and extract structured data
-# Uses python3 if available, falls back to yq, then to basic grep/sed
-# Usage: oml_parse_manifest <manifest-path>
-# Outputs: Sets MANIFEST_* variables and arrays
-oml_parse_manifest() {
+# Uses bunx js-yaml to parse and extract properties
+# Note: Complex config assembly should happen in config.sh, this is for basic extraction
+
+# Extract all environment variable names that are required
+# Usage: oml_manifest_get_required_env_vars <manifest-path>
+# Output: Space-separated list of UPPER_SNAKE_CASE variable names
+oml_manifest_get_required_env_vars() {
   local manifest_file="$1"
 
   if [ ! -f "$manifest_file" ]; then
-    oml_error "Manifest file not found: $manifest_file"
     return 1
   fi
 
-  if command -v python3 &>/dev/null; then
-    _oml_parse_manifest_python "$manifest_file"
-  elif command -v yq &>/dev/null; then
-    _oml_parse_manifest_yq "$manifest_file"
-  else
-    oml_warn "Neither python3 nor yq found. Using basic YAML parser (limited support)."
-    _oml_parse_manifest_basic "$manifest_file"
-  fi
-}
-
-# Parse manifest using python3 (preferred method)
-_oml_parse_manifest_python() {
-  local manifest_file="$1"
-
-  python3 - "$manifest_file" << 'PYEOF'
-import sys
-import yaml
-import json
-
-manifest_path = sys.argv[1]
-try:
-    with open(manifest_path) as f:
-        data = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
-    sys.exit(1)
-if data is None:
-    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
-    sys.exit(1)
-
-# Output as shell-sourceable variables
-mcps = data.get('mcps', [])
-skills_repos = data.get('skills', {}).get('repos', [])
-env_vars = data.get('env', [])
-
-print(f"MANIFEST_VERSION='{data.get('version', '1')}'")
-print(f"MANIFEST_MCP_COUNT='{len(mcps)}'")
-print(f"MANIFEST_SKILL_REPO_COUNT='{len(skills_repos)}'")
-print(f"MANIFEST_ENV_COUNT='{len(env_vars)}'")
-
-# Output MCPs as JSON for shell consumption
-print(f"MANIFEST_MCPS='{json.dumps(mcps)}'")
-print(f"MANIFEST_SKILL_REPOS='{json.dumps(skills_repos)}'")
-print(f"MANIFEST_ENV_VARS='{json.dumps(env_vars)}'")
-
-# Output individual MCP names for iteration
-for i, mcp in enumerate(mcps):
-    name = mcp.get('name', '')
-    url = mcp.get('url', '')
-    print(f"MANIFEST_MCP_{i}_NAME='{name}'")
-    print(f"MANIFEST_MCP_{i}_URL='{url}'")
-
-# Output skill repo URLs for cloning
-for i, repo in enumerate(skills_repos):
-    repo_url = repo.get('repo', '')
-    branch = repo.get('branch', 'main')
-    subdir = repo.get('subdir', 'skills/')
-    auth = repo.get('auth', 'null')
-    print(f"MANIFEST_SKILL_REPO_{i}_URL='{repo_url}'")
-    print(f"MANIFEST_SKILL_REPO_{i}_BRANCH='{branch}'")
-    print(f"MANIFEST_SKILL_REPO_{i}_SUBDIR='{subdir}'")
-    print(f"MANIFEST_SKILL_REPO_{i}_AUTH='{auth}'")
-PYEOF
-}
-
-# Parse manifest using yq (fallback)
-_oml_parse_manifest_yq() {
-  local manifest_file="$1"
-
-  local version mcp_count repo_count env_count
-  version="$(yq '.version // "1"' "$manifest_file")"
-  mcp_count="$(yq '.mcps | length' "$manifest_file")"
-  repo_count="$(yq '.skills.repos | length' "$manifest_file")"
-  env_count="$(yq '.env | length' "$manifest_file")"
-
-  echo "MANIFEST_VERSION='$version'"
-  echo "MANIFEST_MCP_COUNT='$mcp_count'"
-  echo "MANIFEST_SKILL_REPO_COUNT='$repo_count'"
-  echo "MANIFEST_ENV_COUNT='$env_count'"
-}
-
-# Basic grep/sed YAML parser (minimal fallback)
-_oml_parse_manifest_basic() {
-  local manifest_file="$1"
-
-  oml_warn "Using basic YAML parser — complex YAML features may not parse correctly"
-
-  local version
-  version="$(grep '^version:' "$manifest_file" | head -1 | sed "s/version: *//; s/'//g; s/\"//g; s/ *$//")"
-  echo "MANIFEST_VERSION='${version:-1}'"
-
-  local mcp_count
-  mcp_count="$(grep -c '  - name:' "$manifest_file" 2>/dev/null || echo "0")"
-  echo "MANIFEST_MCP_COUNT='$mcp_count'"
-}
-
-# Get a list of skill repo URLs from manifest
-# Usage: oml_get_skill_repo_urls <manifest-path>
-# Outputs: one URL per line
-oml_get_skill_repo_urls() {
-  local manifest_file="$1"
-
-  if ! command -v python3 &>/dev/null; then
-    oml_error "python3 is required for skill repo extraction"
+  if ! command -v bun >/dev/null 2>&1; then
+    oml_error "bun is required to parse manifest"
     return 1
   fi
 
-  python3 - "$manifest_file" << 'PYEOF'
-import sys
-import yaml
-
-try:
-    with open(sys.argv[1]) as f:
-        data = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
-    sys.exit(1)
-if data is None:
-    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
-    sys.exit(1)
-for repo in data.get('skills', {}).get('repos', []):
-    print(repo.get('repo', ''))
-PYEOF
-}
-
-# Get all env var names from manifest
-# Usage: oml_get_env_var_names <manifest-path>
-# Outputs: one var name per line
-oml_get_env_var_names() {
-  local manifest_file="$1"
-
-  if ! command -v python3 &>/dev/null; then
-    grep 'name:' "$manifest_file" | sed 's/.*name: *//' | grep '^[A-Z]' | tr -d "'"
-    return
+  local tmp_manifest
+  tmp_manifest=$(mktemp)
+  if ! bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+    rm -f "$tmp_manifest"
+    return 1
   fi
 
-  python3 - "$manifest_file" << 'PYEOF'
-import sys
-import yaml
+  bun - "$tmp_manifest" << 'BUNEOF'
+const fs = require('fs');
 
-try:
-    with open(sys.argv[1]) as f:
-        data = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    print(f'[oml] ERROR: Invalid YAML in manifest: {e}', file=sys.stderr)
-    sys.exit(1)
-if data is None:
-    print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
-    sys.exit(1)
-for ev in data.get('env', []):
-    print(ev.get('name', ''))
-PYEOF
+let manifest = {};
+try { manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch(e) {}
+
+const envVars = manifest.env || [];
+const required = envVars.filter(v => v.required !== false && v.name).map(v => v.name);
+
+console.log(required.join(' '));
+BUNEOF
+
+  rm -f "$tmp_manifest"
+}
+
+# Ensure all required env vars from manifest are set in the current environment
+# Usage: oml_manifest_check_env <manifest-path>
+# Exit: 0 if all set, 1 if any missing
+oml_manifest_check_env() {
+  local manifest_file="$1"
+  local required_vars
+  required_vars="$(oml_manifest_get_required_env_vars "$manifest_file" || echo "")"
+  
+  if [ -z "$required_vars" ]; then
+    return 0 # No required vars
+  fi
+
+  local missing=()
+  for var in $required_vars; do
+    # Using indirect expansion to check if variable is set and not empty
+    if [ -z "${!var:-}" ]; then
+      missing+=("$var")
+    fi
+  done
+
+  if [ ${#missing[@]} -gt 0 ]; then
+    oml_error "Missing required environment variables defined in manifest:"
+    for var in "${missing[@]}"; do
+      oml_error "  - $var"
+    done
+    oml_error "Please configure them in ~/.env.oml and source it, or export them directly."
+    return 1
+  fi
+
+  return 0
+}
+
+# Extract the team skills repository URL (first one defined)
+# Usage: oml_manifest_get_team_skills_repo <manifest-path>
+# Output: repo URL or empty string
+oml_manifest_get_team_skills_repo() {
+  local manifest_file="$1"
+
+  if [ ! -f "$manifest_file" ]; then
+    return 1
+  fi
+
+  if ! command -v bun >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local tmp_manifest
+  tmp_manifest=$(mktemp)
+  if ! bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+    rm -f "$tmp_manifest"
+    return 1
+  fi
+
+  bun - "$tmp_manifest" << 'BUNEOF'
+const fs = require('fs');
+
+let manifest = {};
+try { manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch(e) {}
+
+const repos = (manifest.skills && manifest.skills.repos) || [];
+if (repos.length > 0 && repos[0].repo) {
+  console.log(repos[0].repo);
+}
+BUNEOF
+
+  rm -f "$tmp_manifest"
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # oh-my-longfor install.sh — Team AI dev environment bootstrap
-# Usage: bash install.sh <team-config-git-url-or-path>
-# Or:    curl -fsSL https://internal.company.com/oml/install.sh | bash -s -- <url>
+# Usage: bash install.sh <team-config-git-url | local-dir | manifest.yaml>
+# Or:    curl -fsSL https://your-host/install.sh | bash -s -- <url>
 set -euo pipefail
 
 OML_HOME="${OML_HOME:-$HOME/.oml}"
@@ -10,6 +10,11 @@ OML_CONFIG_DIR="${OML_HOME}/config"
 OML_OVERRIDES_DIR="${OML_HOME}/overrides"
 OML_ENV_DIR="${OML_HOME}/env"
 OML_BIN_DIR="${OML_HOME}/bin"
+
+# URL to THIS installer repo — used for self-bootstrap in curl|bash mode.
+# Override with: OML_SELF_REPO=https://your-host/oh-my-longfor bash install.sh ...
+OML_SELF_REPO="${OML_SELF_REPO:-https://github.com/your-org/oh-my-longfor}"
+OML_SELF_BRANCH="${OML_SELF_BRANCH:-main}"
 
 # Resolve the directory where this script lives (handles curl|bash case)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-/dev/stdin}")" 2>/dev/null && pwd || echo "")"
@@ -59,6 +64,41 @@ if ! _source_libs; then
   oml_git_clone()      { git clone --depth 1 --branch "${3:-main}" "$1" "$2"; }
   oml_git_clone_or_pull() { if [ -d "$2/.git" ]; then git -C "$2" pull --ff-only; else mkdir -p "$(dirname "$2")"; oml_git_clone "$1" "$2" "${3:-main}"; fi; }
 fi
+
+# ── Self-bootstrap lib files when running via curl|bash ──────────────────────
+# In curl|bash mode, BASH_SOURCE[0] is /dev/stdin, so SCRIPT_DIR resolves to
+# /dev — which has no lib/. This function clones the oml repo itself into
+# $OML_HOME/.bootstrap so all lib/ functions become available.
+_bootstrap_script_dir() {
+  # Already have a valid local script dir with lib/
+  if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/lib" ]; then
+    return 0
+  fi
+
+  oml_info "curl|bash mode detected — fetching oml library from $OML_SELF_REPO ..."
+  local bootstrap_dir="${OML_HOME}/.bootstrap"
+  mkdir -p "$OML_HOME"
+
+  if [ -d "${bootstrap_dir}/.git" ]; then
+    git -C "$bootstrap_dir" pull --ff-only --quiet 2>/dev/null || true
+  else
+    git clone --depth 1 --branch "$OML_SELF_BRANCH" --quiet \
+      "$OML_SELF_REPO" "$bootstrap_dir" 2>/dev/null || {
+      oml_warn "Could not clone oml repo ($OML_SELF_REPO) — some features will be skipped."
+      oml_warn "Override: OML_SELF_REPO=<url> bash install.sh ..."
+      return 1
+    }
+  fi
+
+  if [ ! -d "$bootstrap_dir/lib" ]; then
+    oml_warn "Cloned oml repo but lib/ not found — skipping self-bootstrap"
+    return 1
+  fi
+
+  SCRIPT_DIR="$bootstrap_dir"
+  _source_libs
+  oml_success "oml library loaded from bootstrap."
+}
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 _print_banner() {
@@ -256,6 +296,100 @@ _install_oml_bin() {
   fi
 }
 
+# ── Post-install summary ──────────────────────────────────────────────────────
+_print_summary() {
+  local manifest_file="$1"
+
+  printf "\n"
+  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
+  printf '%s\n' "${GREEN}  ✓ oh-my-longfor installed successfully!               ${NC}"
+  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
+  printf "\n"
+
+  # Dynamic section: show what was configured from manifest
+  if command -v python3 >/dev/null 2>&1 && [ -f "$manifest_file" ]; then
+    python3 - "$manifest_file" << 'PYEOF'
+import sys
+try:
+    import yaml
+except ImportError:
+    sys.exit(0)
+try:
+    with open(sys.argv[1]) as f:
+        data = yaml.safe_load(f)
+except Exception:
+    sys.exit(0)
+if not data:
+    sys.exit(0)
+
+BLUE = '\033[0;34m'
+YELLOW = '\033[1;33m'
+NC = '\033[0m'
+
+mcps        = data.get('mcps', []) or []
+skill_repos = data.get('skills', {}).get('repos', []) or []
+env_vars    = data.get('env', []) or []
+required_ev = [v for v in env_vars if v.get('required', True)]
+optional_ev = [v for v in env_vars if not v.get('required', True)]
+
+if mcps:
+    print(f"{BLUE}[oml]{NC} MCPs configured ({len(mcps)}):")
+    for m in mcps:
+        print(f"  \u2022 {m.get('name', '?')}")
+    print()
+
+if skill_repos:
+    print(f"{BLUE}[oml]{NC} Skill repos ({len(skill_repos)}):")
+    for r in skill_repos:
+        print(f"  \u2022 {r.get('repo', '?')}  (branch: {r.get('branch', 'main')})")
+    print()
+
+if required_ev:
+    print(f"{YELLOW}[oml] \u26a0  API keys you must fill in:{NC}")
+    for v in required_ev:
+        name = v.get('name', '')
+        desc = v.get('description', '')
+        print(f"  \u2022 {name}")
+        if desc:
+            print(f"    {desc}")
+    print()
+
+if optional_ev:
+    print(f"{BLUE}[oml]{NC} Optional env vars (for full functionality):")
+    for v in optional_ev:
+        name = v.get('name', '')
+        desc = v.get('description', '')
+        print(f"  \u2022 {name}")
+        if desc:
+            print(f"    {desc}")
+    print()
+PYEOF
+  fi
+
+  printf '%s\n' "${BLUE}[oml]${NC} ─── Next Steps ──────────────────────────────────────────────"
+  printf "\n"
+  printf '%s\n' "  ${YELLOW}1. Reload your shell${NC}"
+  printf '%s\n' "       source ~/.zshrc   # or ~/.bashrc"
+  printf "\n"
+  printf '%s\n' "  ${YELLOW}2. Fill in your API keys${NC}"
+  printf '%s\n' "       cp ${OML_ENV_DIR}/.env.template ~/.env.oml"
+  printf '%s\n' "       \$EDITOR ~/.env.oml"
+  printf '%s\n' "       echo '[ -f ~/.env.oml ] && source ~/.env.oml' >> ~/.zshrc"
+  printf "\n"
+  printf '%s\n' "  ${YELLOW}3. Configure oh-my-opencode AI subscriptions${NC}"
+  printf '%s\n' "       bunx oh-my-opencode install"
+  printf '%s\n' "       # Choose which AI providers you have (Claude, Gemini, Copilot)"
+  printf "\n"
+  printf '%s\n' "  ${YELLOW}4. Verify everything works${NC}"
+  printf '%s\n' "       oml doctor"
+  printf '%s\n' "       oml status"
+  printf "\n"
+  printf '%s\n' "  Config:       ${OML_CONFIG_DIR}/opencode.json"
+  printf '%s\n' "  Env template: ${OML_ENV_DIR}/.env.template"
+  printf '%s\n' "  Skills dir:   ${HOME}/.claude/skills/"
+  printf "\n"
+}
+
 # ── Main install flow ─────────────────────────────────────────────────────────
 main() {
   local team_config_url="${1:-}"
@@ -263,9 +397,16 @@ main() {
   _print_banner
 
   if [ -z "$team_config_url" ]; then
-    _error "Usage: bash install.sh <team-config-git-url-or-local-path>"
-    _error "Example: bash install.sh https://github.com/your-org/team-config"
-    _error "Example: bash install.sh ./example-team-config"
+    _error "Usage: bash install.sh <team-config-source>"
+    _error ""
+    _error "Accepted sources:"
+    _error "  Remote git repo:  bash install.sh https://github.com/your-org/team-config"
+    _error "  Local directory:  bash install.sh ./example-team-config"
+    _error "  Local manifest:   bash install.sh ./manifest.yaml"
+    _error "  Local manifest:   bash install.sh /absolute/path/to/manifest.yaml"
+    _error ""
+    _error "curl one-liner:"
+    _error "  curl -fsSL https://your-host/install.sh | bash -s -- https://github.com/your-org/team-config"
     exit 1
   fi
 
@@ -277,6 +418,9 @@ main() {
   # ── Step 1: Check prerequisites ──────────────────────────────────────────────
   oml_info "Checking prerequisites..."
   oml_check_deps git curl python3
+
+  # ── Step 1b: Bootstrap lib files (curl|bash mode) ────────────────────────────
+  _bootstrap_script_dir || true
 
   # ── Step 2: Install runtime dependencies ────────────────────────────────────
   _ensure_bun
@@ -292,12 +436,32 @@ main() {
   mkdir -p "$OML_REPO_DIR" "$OML_CONFIG_DIR" "$OML_OVERRIDES_DIR" "$OML_ENV_DIR" "$OML_BIN_DIR"
   touch "$OML_REPO_DIR/.gitkeep"
 
-  # ── Step 5: Clone or update team-config repo ────────────────────────────────
+  # ── Step 5: Load team-config (git repo | local dir | local manifest file) ────
   local team_config_dest="${OML_REPO_DIR}/team-config"
-  oml_info "Cloning team config..."
+  local manifest_file=""
+  oml_info "Loading team config..."
 
-  if [[ "$team_config_url" == /* ]] || [[ "$team_config_url" == ./* ]]; then
-    # Local path: copy instead of clone
+  if [[ "$team_config_url" == *.yaml ]] || [[ "$team_config_url" == *.yml ]]; then
+    # ── Mode A: Direct path to a manifest.yaml file ──────────────────────────
+    local file_dir file_base abs_manifest
+    file_dir="$(dirname "$team_config_url")"
+    file_base="$(basename "$team_config_url")"
+    if [[ "$team_config_url" == /* ]]; then
+      abs_manifest="$team_config_url"
+    else
+      abs_manifest="$(cd "$file_dir" 2>/dev/null && pwd || echo "$file_dir")/${file_base}"
+    fi
+    if [ ! -f "$abs_manifest" ]; then
+      oml_error "Manifest file not found: $abs_manifest"
+      exit 1
+    fi
+    mkdir -p "$team_config_dest"
+    cp "$abs_manifest" "${team_config_dest}/manifest.yaml"
+    oml_success "Using local manifest: $abs_manifest"
+    manifest_file="${team_config_dest}/manifest.yaml"
+
+  elif [[ "$team_config_url" == /* ]] || [[ "$team_config_url" == ./* ]]; then
+    # ── Mode B: Local directory containing manifest.yaml ─────────────────────
     local abs_path
     abs_path="$(cd "$team_config_url" 2>/dev/null && pwd || echo "$team_config_url")"
     if [ -d "$team_config_dest" ]; then
@@ -305,14 +469,17 @@ main() {
     fi
     cp -r "$abs_path" "$team_config_dest"
     oml_success "Copied local team config: $abs_path → $team_config_dest"
+    manifest_file="${team_config_dest}/manifest.yaml"
+
   else
+    # ── Mode C: Remote git repository ─────────────────────────────────────────
     oml_git_clone_or_pull "$team_config_url" "$team_config_dest" "main"
+    manifest_file="${team_config_dest}/manifest.yaml"
   fi
 
-  local manifest_file="${team_config_dest}/manifest.yaml"
   if [ ! -f "$manifest_file" ]; then
-    oml_error "manifest.yaml not found in team config: $manifest_file"
-    oml_error "Make sure your team-config repo has a manifest.yaml file."
+    oml_error "manifest.yaml not found: $manifest_file"
+    oml_error "Make sure your source has a manifest.yaml file."
     exit 1
   fi
 
@@ -359,22 +526,7 @@ main() {
   oml_lock_release
 
   # ── Summary ──────────────────────────────────────────────────────────────────
-  printf "\n"
-  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
-  printf '%s\n' "${GREEN}  ✓ oh-my-longfor installed successfully!               ${NC}"
-  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
-  printf "\n"
-  oml_info "Next steps:"
-  oml_info "  1. Reload your shell: source ~/.zshrc  (or ~/.bashrc)"
-  oml_info "  2. Fill in API keys:  cp ~/.oml/env/.env.template ~/.env.oml && edit ~/.env.oml"
-  oml_info "  3. Source your env:   echo '[ -f ~/.env.oml ] && source ~/.env.oml' >> ~/.zshrc"
-  oml_info "  4. Check status:      oml status"
-  oml_info "  5. Verify setup:      oml doctor"
-  printf "\n"
-  oml_info "Team config: $team_config_url"
-  oml_info "Config dir:  $OML_CONFIG_DIR"
-  oml_info "Env template: ${OML_ENV_DIR}/.env.template"
-  printf "\n"
+  _print_summary "$manifest_file"
 }
 
 main "$@"

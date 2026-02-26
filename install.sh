@@ -282,7 +282,7 @@ _configure_shell() {
   fi
 }
 
-# ── Install oml bin ────────────────────────────────────────────────────────────
+# ── Install oml bin + lib ─────────────────────────────────────────────────────
 _install_oml_bin() {
   mkdir -p "$OML_BIN_DIR"
 
@@ -293,6 +293,18 @@ _install_oml_bin() {
   else
     oml_warn "bin/oml not found in $SCRIPT_DIR — skipping oml binary install"
     oml_warn "You may need to reinstall from a full repo checkout."
+  fi
+
+  # Also install lib/ so 'oml' commands work outside the source directory.
+  # bin/oml resolves lib at ~/.oml/lib/ when not run from the repo root.
+  if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/lib" ]; then
+    local lib_dest="${OML_HOME}/lib"
+    rm -rf "$lib_dest"
+    cp -r "$SCRIPT_DIR/lib" "$lib_dest"
+    oml_success "Installed lib/ to $lib_dest"
+  else
+    oml_warn "lib/ not found in $SCRIPT_DIR — 'oml' subcommands may not work"
+    oml_warn "Try: bash install.sh <url>  (from a full repo checkout or via curl|bash)"
   fi
 }
 

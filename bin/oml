@@ -57,7 +57,7 @@ _oml_manifest() {
 cmd_install() {
   local team_config_url="${1:-}"
   if [ -z "$team_config_url" ]; then
-    oml_error "Usage: oml install <team-config-git-url>"
+    oml_error "Usage: oml install <git-url | local-dir | manifest.yaml>"
     exit 1
   fi
 
@@ -344,6 +344,8 @@ cmd_help() {
 
   EXAMPLES:
     oml install https://github.com/your-org/team-config
+    oml install ./team-config           # local directory
+    oml install ./manifest.yaml         # single manifest file
     oml update
     oml status
     oml doctor

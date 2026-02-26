@@ -349,12 +349,16 @@ if mcps:
     for m in mcps:
         print(f"  \u2022 {m.get('name', '?')}")
     print()
+else:
+    print(f"{BLUE}[oml]{NC} MCPs: (none configured in manifest)")
 
 if skill_repos:
     print(f"{BLUE}[oml]{NC} Skill repos ({len(skill_repos)}):")
     for r in skill_repos:
         print(f"  \u2022 {r.get('repo', '?')}  (branch: {r.get('branch', 'main')})")
     print()
+else:
+    print(f"{BLUE}[oml]{NC} Skill repos: (none configured in manifest)")
 
 if required_ev:
     print(f"{YELLOW}[oml] \u26a0  API keys you must fill in:{NC}")
@@ -398,7 +402,7 @@ PYEOF
   printf "\n"
   printf '%s\n' "  Config:       ${OML_CONFIG_DIR}/opencode.json"
   printf '%s\n' "  Env template: ${OML_ENV_DIR}/.env.template"
-  printf '%s\n' "  Skills dir:   ${HOME}/.claude/skills/"
+  printf '%s\n' "  Skills dirs:  ${HOME}/.claude/skills/ , ${HOME}/.config/opencode/skills/"
   printf "\n"
 }
 

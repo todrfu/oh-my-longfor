@@ -63,8 +63,8 @@ github.com/your-org/team-config    curl -fsSL .../install.sh | bash -s -- <repo-
 ```
 
 **关键机制：**
-- `OPENCODE_CONFIG=~/.oml/config/opencode.json` 自动写入 `~/.zshrc`，OpenCode 读取该配置
-- Skills 在 `~/.claude/skills/` 创建软链接，供 oh-my-opencode 发现
+- `OPENCODE_CONFIG=~/.oml/config/opencode.json` 自动写入用户的 shell rc 文件（`.zshrc`、`.bashrc`、`.bash_profile` 中已存在的都会写入，全部不存在则创建 `.bashrc`），OpenCode 读取该环境变量加载配置
+- Skills 在 `~/.claude/skills/` 和 `~/.config/opencode/skills/` 同时创建软链接（兼容 Claude Code 和 OpenCode 原生路径）
 - 每次 `oml update` 前自动备份，支持 `oml rollback` 回滚
 
 ---
@@ -115,26 +115,45 @@ env:
 
 > 完整的 `manifest.yaml` 字段说明见 [manifest.yaml 完整说明](#manifestyaml-完整说明)。
 
-### 第 3 步：Fork 并部署 oh-my-longfor（可选）
+### 第 3 步：分发安装命令
 
-如果你的团队在内网环境，需要 Fork 本仓库并部署到内网：
+管理员需要将 oh-my-longfor 仓库和 team-config 仓库都托管好，然后把安装命令发给团队成员。
+
+**理解两种安装模式：**
+
+| 模式 | `lib/` 从哪来 | 是否需要 `OML_SELF_REPO` |
+|------|-------------|------------------------|
+| `bash install.sh <url>`（本地运行） | 脚本同目录的 `lib/` | 不需要 |
+| `curl \| bash`（远程运行） | 只下载了 install.sh，**没有 lib/** | **需要** — 脚本会 clone `OML_SELF_REPO` 获取 lib |
+
+> **为什么 curl \| bash 模式需要额外配置？**
+> `curl` 只下载了 `install.sh` 这一个文件，Step 6-9（克隆 Skills、生成 opencode.json 等）需要 `lib/` 里的函数。
+> 脚本会自动 clone `OML_SELF_REPO` 来获取这些文件。
+
+**公网 GitHub 仓库（默认值能用）：**
+
+如果你的 oh-my-longfor 仓库托管在 GitHub 公网，确保 `install.sh` 第 16 行的默认值改为你的实际仓库地址：
 
 ```bash
-# Fork 后，在分发命令前设置 OML_SELF_REPO
-OML_SELF_REPO=https://内网地址/oh-my-longfor \
-  curl -fsSL https://内网地址/install.sh | bash -s -- <team-config-url>
+# install.sh 第 16 行 — 改为你的实际地址
+OML_SELF_REPO="${OML_SELF_REPO:-https://github.com/your-org/oh-my-longfor}"
 ```
 
-> **为什么需要 `OML_SELF_REPO`？**
-> 通过 `curl | bash` 运行时，脚本无法访问自身的 `lib/` 目录，因此会自动 clone `OML_SELF_REPO` 来获取库文件。默认值为 `https://github.com/your-org/oh-my-longfor`，请替换为你的实际地址。
-
-### 第 4 步：分发安装命令
-
-把以下命令发给所有团队成员：
+改好后，成员只需运行：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
   | bash -s -- https://github.com/your-org/team-config
+```
+
+**内网环境（需要显式指定 OML_SELF_REPO）：**
+
+如果仓库在内网，成员需要在命令前加上 `OML_SELF_REPO`：
+
+```bash
+OML_SELF_REPO=https://内网地址/oh-my-longfor \
+  curl -fsSL https://内网地址/oh-my-longfor/raw/main/install.sh \
+  | bash -s -- https://内网地址/team-config
 ```
 
 ---
@@ -246,7 +265,7 @@ mcps:
 
 # ─── Skills（技能仓库）────────────────────────────────────────────────────────
 # 配置存放 OpenCode Skills 的 Git 仓库。
-# 安装时会自动 clone 到 ~/.oml/repos/，并在 ~/.claude/skills/ 创建软链接。
+# 安装时会自动 clone 到 ~/.oml/repos/，并在 ~/.claude/skills/ 和 ~/.config/opencode/skills/ 创建软链接。
 skills:
   repos:
     - repo: "https://github.com/your-org/team-skills"   # 仓库地址
@@ -539,7 +558,12 @@ oml env
     └── 2026-02-25-143022/
 
 ~/.claude/
-└── skills/                         ← oml 管理的 Skill 软链接目录
+└── skills/                         ← oml 管理的 Skill 软链接（Claude Code 路径）
+    ├── code-review -> ~/.oml/repos/team-skills/skills/code-review/
+    └── ...
+
+~/.config/opencode/
+└── skills/                         ← oml 管理的 Skill 软链接（OpenCode 原生路径）
     ├── code-review -> ~/.oml/repos/team-skills/skills/code-review/
     └── ...
 ```
@@ -624,6 +648,7 @@ rm -rf ~/.oml
 
 # 2. 删除 skill 软链接
 rm -rf ~/.claude/skills
+rm -rf ~/.config/opencode/skills
 
 # 3. 从 shell rc 文件中删除 oml 相关行
 # 找到并删除包含 "# oml:" 注释的行（PATH 和 OPENCODE_CONFIG 配置）

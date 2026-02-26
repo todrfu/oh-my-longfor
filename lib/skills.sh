@@ -167,15 +167,16 @@ oml_skill_status() {
   done
 }
 
-# Create symlinks from ~/.claude/skills/<name> to cloned skill directories
-# This is required because skills.paths in OpenCode 1.2.13 does not work
+# Create symlinks to both ~/.claude/skills/ and ~/.config/opencode/skills/
+# This ensures discovery by Claude Code and OpenCode native skill scanning.
 # Usage: oml_create_skill_symlinks
 oml_create_skill_symlinks() {
   local repos_dir="${OML_HOME}/repos"
   local symlinks_file="${OML_HOME}/config/symlinks.txt"
   local claude_skills_dir="${HOME}/.claude/skills"
+  local opencode_skills_dir="${HOME}/.config/opencode/skills"
 
-  mkdir -p "$(dirname "$symlinks_file")" "$claude_skills_dir"
+  mkdir -p "$(dirname "$symlinks_file")" "$claude_skills_dir" "$opencode_skills_dir"
   : >"$symlinks_file"  # Clear existing symlinks list
 
   while IFS= read -r skill_file; do
@@ -183,32 +184,35 @@ oml_create_skill_symlinks() {
     skill_dir="$(dirname "$skill_file")"
     local skill_name
     skill_name="$(basename "$skill_dir")"
-    local link_target="${claude_skills_dir}/${skill_name}"
+    local target_dir
+    for target_dir in "$claude_skills_dir" "$opencode_skills_dir"; do
+      local link_target="${target_dir}/${skill_name}"
 
-    # Remove existing symlink if it points elsewhere
-    if [ -L "$link_target" ]; then
-      local current_target
-      current_target="$(readlink "$link_target")"
-      if [ "$current_target" != "$skill_dir" ]; then
-        oml_warn "Overwriting existing symlink: $link_target → $current_target"
-        rm "$link_target"
+      # Remove existing symlink if it points elsewhere
+      if [ -L "$link_target" ]; then
+        local current_target
+        current_target="$(readlink "$link_target")"
+        if [ "$current_target" != "$skill_dir" ]; then
+          oml_warn "Overwriting existing symlink: $link_target → $current_target"
+          rm "$link_target"
+        fi
+      elif [ -e "$link_target" ]; then
+        oml_warn "Skipping $skill_name in ${target_dir}: exists and is not a symlink"
+        continue
       fi
-    elif [ -e "$link_target" ]; then
-      oml_warn "Skipping $skill_name: $link_target exists and is not a symlink"
-      continue
-    fi
 
-    if [ ! -L "$link_target" ]; then
-      ln -sf "$skill_dir" "$link_target"
-      oml_info "Linked skill: $skill_name"
-    fi
+      if [ ! -L "$link_target" ]; then
+        ln -sf "$skill_dir" "$link_target"
+      fi
 
-    # Track the symlink for cleanup
-    echo "$link_target" >>"$symlinks_file"
+      # Track the symlink for cleanup
+      echo "$link_target" >>"$symlinks_file"
+    done
+    oml_info "Linked skill: $skill_name"
   done < <(find "$repos_dir" -name 'SKILL.md' -maxdepth 4 2>/dev/null | sort)
 }
 
-# Remove all oml-managed symlinks from ~/.claude/skills/
+# Remove all oml-managed symlinks from ~/.claude/skills/ and ~/.config/opencode/skills/
 # Usage: oml_remove_skill_symlinks
 oml_remove_skill_symlinks() {
   local symlinks_file="${OML_HOME}/config/symlinks.txt"

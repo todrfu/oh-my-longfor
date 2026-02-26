@@ -59,18 +59,32 @@ if data is None:
     print('[oml] ERROR: Manifest file is empty or invalid', file=sys.stderr)
     sys.exit(1)
 
-# ── MCPs ──────────────────────────────────────────────────────────────────────
+# ── MCPs ──────────────────────────────────────────────────────────────────────────────
 team_mcps = {}
 for mcp in data.get('mcps', []):
     name = mcp.get('name')
     if not name:
         continue
-    entry = {
-        'type': mcp.get('type', 'remote'),
-        'url':  mcp.get('url', ''),
-    }
-    if 'headers' in mcp:
-        entry['headers'] = mcp['headers']
+    mcp_type = mcp.get('type', 'remote')
+    if mcp_type == 'local':
+        # stdio transport: command is an array, optional environment dict
+        entry = {'type': 'local'}
+        if 'command' in mcp:
+            entry['command'] = mcp['command']
+        if 'environment' in mcp:
+            entry['environment'] = mcp['environment']
+    else:
+        # remote/SSE transport
+        entry = {
+            'type': 'remote',
+            'url':  mcp.get('url', ''),
+        }
+        if 'headers' in mcp:
+            entry['headers'] = mcp['headers']
+    if 'enabled' in mcp:
+        entry['enabled'] = mcp['enabled']
+    if 'timeout' in mcp:
+        entry['timeout'] = mcp['timeout']
     team_mcps[name] = entry
 
 # Apply personal overrides (user wins on conflict)

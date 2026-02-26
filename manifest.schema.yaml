@@ -20,14 +20,13 @@ properties:
 
   mcps:
     type: array
-    description: "List of Remote/SSE MCPs to configure for the team"
+    description: "List of MCPs (remote SSE or local stdio) to configure"
     minItems: 0
     items:
       type: object
       required:
         - name
         - type
-        - url
       properties:
         name:
           type: string
@@ -37,22 +36,46 @@ properties:
           type: string
           enum:
             - remote
-          description: "MCP type — always 'remote' for Remote/SSE MCPs"
+            - local
+          description: |
+            MCP transport type:
+            - remote: SSE/HTTP transport. Requires 'url'.
+            - local: stdio transport. Requires 'command' (array).
+        # ── remote-only fields ──────────────────────────────────────────────
         url:
           type: string
           format: uri
-          description: "SSE endpoint URL for the MCP"
+          description: "(remote only) SSE endpoint URL"
         headers:
           type: object
-          description: "HTTP headers to send with MCP requests. Use {env:VAR_NAME} for secrets."
+          description: "(remote only) HTTP headers. Use {env:VAR_NAME} for secrets."
           additionalProperties:
             type: string
-        env_vars:
+        # ── local-only fields ───────────────────────────────────────────────
+        command:
           type: array
-          description: "List of env var names this MCP requires (for documentation)"
+          description: "(local only) Command + arguments to launch the MCP process. e.g. ['npx','-y','@scope/pkg']"
           items:
             type: string
-
+          minItems: 1
+        environment:
+          type: object
+          description: "(local only) Environment variables passed to the MCP process."
+          additionalProperties:
+            type: string
+        # ── shared fields ────────────────────────────────────────────────────
+        enabled:
+          type: boolean
+          default: true
+          description: "Whether this MCP is active on startup"
+        timeout:
+          type: integer
+          description: "Timeout in ms for fetching tools (default: 5000)"
+        env_vars:
+          type: array
+          description: "(documentation) List of env var names this MCP requires"
+          items:
+            type: string
   skills:
     type: object
     description: "Skill repository configuration"

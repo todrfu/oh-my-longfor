@@ -15,6 +15,7 @@ version: "1"
 # Use {env:VAR_NAME} syntax for secrets — never put actual keys here!
 # =============================================================================
 mcps:
+  # ── Remote MCPs (SSE/HTTP transport) ────────────────────────────────────────
   # Context7 — Up-to-date library documentation
   - name: context7
     type: remote
@@ -51,6 +52,19 @@ mcps:
     headers:
       Authorization: "Bearer {env:SLACK_BOT_TOKEN}"
 
+  # ── Local MCPs (stdio transport) ──────────────────────────────────────────
+  # Sequential Thinking — structured reasoning via npx (Node)
+  # 'command' is an array combining the executable and all its arguments.
+  - name: sequential-thinking
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+  # Example: Python/uv based local MCP
+  # - name: my-python-mcp
+  #   type: local
+  #   command: ["uv", "run", "my-mcp-server"]
+  #   environment:
+  #     MY_API_KEY: "{env:MY_API_KEY}"
 # =============================================================================
 # Skills
 # =============================================================================

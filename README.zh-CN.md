@@ -83,16 +83,32 @@ OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
 ```yaml
 version: "1"
 
-# ─── MCP 服务器 ────────────────────────────────────────────────────────────
-# 会被注入到 ~/.oml/config/opencode.json
+# ─── MCP 服务器 ────────────────────────────────────────────
+# 支持两种传输方式：
+#   remote — SSE/HTTP 服务（远程托管，无需本地安装）
+#   local  — stdio 服务（本地进程，通过 npx/uv 等启动）
 mcps:
+  # 远程 MCP：SSE 传输，通过 HTTP Header 认证
   - name: context7
     type: remote
     url: "https://mcp.context7.com/sse"
     headers:
       Authorization: "Bearer {env:CONTEXT7_API_KEY}"  # 运行时自动解析
 
-# ─── Agent Skills ───────────────────────────────────────────────────────────
+  # 本地 MCP：stdio 传输，通过 npx 启动（Node.js）
+  # command 为数组，第一个元素是可执行文件，其余为参数
+  - name: sequential-thinking
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+  # 本地 MCP：stdio 传输，通过 uv 启动（Python）
+  # - name: my-python-mcp
+  #   type: local
+  #   command: ["uv", "run", "my-mcp-server"]
+  #   environment:                     # 传递给进程的环境变量（可选）
+  #     MY_API_KEY: "{env:MY_API_KEY}"
+
+# ─── Agent Skills ───────────────────────────────────────────
 # 仓库会被克隆到 ~/.oml/repos/，并创建软链接以便发现
 skills:
   repos:
@@ -101,14 +117,14 @@ skills:
       subdir: "skills/"     # 默认：skills/
       auth: null            # 选项：null（公开）、token（使用 GITHUB_TOKEN）、ssh
 
-# ─── 环境变量 ──────────────────────────────────────────────────────────────
+# ─── 环境变量 ────────────────────────────────────
 # 定义必需/可选的 API Key。生成 ~/.oml/env/.env.template 文件。
 env:
   - name: CONTEXT7_API_KEY
-    description: "从 https://context7.com/settings 获取密钥"
+    description: "从 https://context7.com/settings 获取密鑰"
     required: true
 
-# ─── oh-my-opencode 覆盖配置（可选）───────────────────────────────────────
+# ─── oh-my-opencode 覆盖配置（可选） ─────────────────────────
 omo_overrides:
   agents:
     oracle:

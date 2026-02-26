@@ -82,16 +82,32 @@ Here is a complete example:
 ```yaml
 version: "1"
 
-# ─── MCP Servers ────────────────────────────────────────────────────────────
-# These are injected into ~/.oml/config/opencode.json
+# ─── MCP Servers ────────────────────────────────────────────
+# Two transport types are supported:
+#   remote — SSE/HTTP servers (hosted, no local install required)
+#   local  — stdio servers that run as a local process (npx, uv, etc.)
 mcps:
+  # Remote MCP: SSE transport, authenticated via HTTP header
   - name: context7
     type: remote
     url: "https://mcp.context7.com/sse"
     headers:
-      Authorization: "Bearer {env:CONTEXT7_API_KEY}"  # Automatically resolved at runtime
+      Authorization: "Bearer {env:CONTEXT7_API_KEY}"  # Resolved at runtime
 
-# ─── Agent Skills ───────────────────────────────────────────────────────────
+  # Local MCP: stdio transport via npx (Node.js)
+  # 'command' is an array — first element is the executable, rest are arguments
+  - name: sequential-thinking
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+  # Local MCP: stdio transport via uv (Python)
+  # - name: my-python-mcp
+  #   type: local
+  #   command: ["uv", "run", "my-mcp-server"]
+  #   environment:                     # Optional env vars passed to the process
+  #     MY_API_KEY: "{env:MY_API_KEY}"
+
+# ─── Agent Skills ───────────────────────────────────────────
 # Repositories are cloned to ~/.oml/repos/ and symlinked for discovery
 skills:
   repos:
@@ -100,14 +116,14 @@ skills:
       subdir: "skills/"     # Default: skills/
       auth: null            # Options: null (public), token (uses GITHUB_TOKEN), ssh
 
-# ─── Environment Variables ──────────────────────────────────────────────────
+# ─── Environment Variables ────────────────────────────────────
 # Defines required/optional API keys. Generates a ~/.oml/env/.env.template file.
 env:
   - name: CONTEXT7_API_KEY
     description: "Get your key from https://context7.com/settings"
     required: true
 
-# ─── oh-my-opencode Overrides (Optional) ────────────────────────────────────
+# ─── oh-my-opencode Overrides (Optional) ─────────────────────────
 omo_overrides:
   agents:
     oracle:

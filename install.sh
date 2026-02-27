@@ -281,7 +281,7 @@ _add_to_path() {
   if grep -qF "$marker" "$rc_file" 2>/dev/null; then
     local tmpfile
     tmpfile="$(mktemp)"
-    awk -v m="$marker" 'index($0,m){skip=1;next} skip>0{skip--;next} {print}' "$rc_file" > "$tmpfile"
+    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
     cp "$tmpfile" "$rc_file"
     rm -f "$tmpfile"
     oml_info "Updating PATH in $rc_file"
@@ -314,7 +314,7 @@ _add_env_var() {
   if grep -qF "$marker" "$rc_file" 2>/dev/null; then
     local tmpfile
     tmpfile="$(mktemp)"
-    awk -v m="$marker" 'index($0,m){skip=1;next} skip>0{skip--;next} {print}' "$rc_file" > "$tmpfile"
+    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
     cp "$tmpfile" "$rc_file"
     rm -f "$tmpfile"
     oml_info "Updating $var_name in $rc_file"
@@ -332,13 +332,24 @@ EOF
 _add_source_line() {
   local source_file="$1"
   local rc_file="$2"
+  local marker="# oml: env"
 
   if [ ! -f "$rc_file" ]; then return 0; fi
 
-  # Skip if source_file path already referenced
+  # Skip if exact source_file path already referenced
   if grep -qF "$source_file" "$rc_file" 2>/dev/null; then
     oml_info "Env source already configured in $rc_file"
     return 0
+  fi
+
+  # Remove stale oml env source entry (different OML_HOME)
+  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
+    local tmpfile
+    tmpfile="$(mktemp)"
+    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
+    cp "$tmpfile" "$rc_file"
+    rm -f "$tmpfile"
+    oml_info "Updating env source in $rc_file"
   fi
 
   cat >>"$rc_file" <<EOF
@@ -476,6 +487,7 @@ BUNEOF
   printf '%b\n' "│"
   printf '%b\n' "│  ${GREEN}2. Fill in your API keys${NC}"
   printf '%b\n' "│       vim ${OML_ENV_DIR}/.env.oml"
+  printf '%b\n' "│"
   printf '%b\n' "│       ${GRAY}After that, run: source ${_rc_file}${NC}"
   printf '%b\n' "│"
   printf '%b\n' "│  ${GREEN}3. You can also configure oh-my-opencode AI subscriptions (optional)${NC}"

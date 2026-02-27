@@ -126,32 +126,40 @@ let manifest = {};
 try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) {}
 
 const envVars = manifest.env || [];
-let allSet = true;
 
 console.log('Environment Variable Status:\n');
+
+// ── No env vars declared in manifest at all ─────────────────────────────────
+if (envVars.length === 0) {
+  console.log('  (No env vars are declared in this manifest.)');
+  console.log('');
+  console.log('\x1b[0;34m[oml]\x1b[0m To track API keys, add an \x1b[0;33menv:\x1b[0m block to your manifest.yaml.');
+  process.exit(0);
+}
+
+let missingRequired = 0;
 
 for (const v of envVars) {
   const name = v.name || '';
   if (!name) continue;
-  
+
   const required = v.required !== false;
-  const isSet = !!process.env[name];
-  
-  const status = isSet ? '\x1b[0;32m✅ set\x1b[0m' : '\x1b[0;31m❌ missing\x1b[0m';
+  const isSet   = !!process.env[name];
+
+  const status = isSet ? '\x1b[0;32m\u2705 set\x1b[0m' : '\x1b[0;31m\u274c missing\x1b[0m';
   const reqTag = required ? ' (required)' : ' (optional)';
-  
+
   console.log(`  ${status}  ${name}${reqTag}`);
-  
-  if (!isSet && required) {
-    allSet = false;
-  }
+
+  if (!isSet && required) missingRequired++;
 }
 
 console.log('');
-if (allSet) {
-  console.log('\x1b[0;32mAll required env vars are set.\x1b[0m');
+const requiredCount = envVars.filter(v => v.required !== false).length;
+if (missingRequired === 0) {
+  console.log(`\x1b[0;32mAll ${requiredCount} required env var(s) are set.\x1b[0m`);
 } else {
-  console.log('\x1b[1;33mSome required env vars are missing. Fill in ~/.env.oml and source it.\x1b[0m');
+  console.log(`\x1b[1;33m${missingRequired} required env var(s) missing.\x1b[0m Edit ~/.oml/env/.env.oml and source it.`);
   process.exit(1);
 }
 BUNEOF
@@ -164,5 +172,28 @@ BUNEOF
 # Output the shell rc line needed to source the .env.oml file
 # Usage: oml_env_source_line
 oml_env_source_line() {
-  echo '[ -f ~/.env.oml ] && source ~/.env.oml'
+  local env_file="${OML_HOME}/env/.env.oml"
+  echo "[ -f \"${env_file}\" ] && source \"${env_file}\""
+}
+
+# Copy .env.template to .env.oml if the file does not exist yet (non-destructive).
+# Called automatically after a non-vanilla install so users only need to edit,
+# not first copy, the env file.
+# Usage: oml_setup_env_file
+oml_setup_env_file() {
+  local template_file="${OML_HOME}/env/.env.template"
+  local env_file="${OML_HOME}/env/.env.oml"
+
+  if [ ! -f "$template_file" ]; then
+    oml_warn "No .env.template found \u2014 skipping env file creation"
+    return 0
+  fi
+
+  if [ -f "$env_file" ]; then
+    oml_info "Env file already exists: $env_file (skipping copy)"
+    return 0
+  fi
+
+  cp "$template_file" "$env_file"
+  oml_success "Created env file: $env_file"
 }

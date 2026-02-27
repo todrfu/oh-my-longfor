@@ -103,10 +103,10 @@ _bootstrap_script_dir() {
 # ── Banner ────────────────────────────────────────────────────────────────────
 _print_banner() {
   printf "\n"
-  printf '%s\n' "${BLUE}╔═══════════════════════════════════════╗${NC}"
-  printf '%s\n' "${BLUE}║   oh-my-longfor (oml) installer       ║${NC}"
-  printf '%s\n' "${BLUE}║   Team AI Dev Environment Bootstrap   ║${NC}"
-  printf '%s\n' "${BLUE}╚═══════════════════════════════════════╝${NC}"
+  printf '%b\n' "${BLUE}╔═══════════════════════════════════════╗${NC}"
+  printf '%b\n' "${BLUE}║   oh-my-longfor (oml) installer       ║${NC}"
+  printf '%b\n' "${BLUE}║   Team AI Dev Environment Bootstrap   ║${NC}"
+  printf '%b\n' "${BLUE}╚═══════════════════════════════════════╝${NC}"
   printf "\n"
 }
 
@@ -124,6 +124,15 @@ _check_platform() {
 # ── Detect interactive terminal ───────────────────────────────────────────────
 _is_interactive() {
   [ -t 0 ]
+}
+
+# ── Detect the user's primary shell rc file ───────────────────────────────
+_detect_rc_file() {
+  case "${SHELL##*/}" in
+    zsh)  echo "$HOME/.zshrc" ;;
+    bash) echo "$HOME/.bashrc" ;;
+    *)    echo "$HOME/.bashrc" ;;
+  esac
 }
 
 # ── Install bun if missing (required for oh-my-opencode via bunx) ─────────────
@@ -193,8 +202,14 @@ _ensure_omo() {
     oml_error "bun is required to install oh-my-opencode. Run _ensure_bun first."
     return 1
   fi
-  bunx oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=no
-  oml_success "oh-my-opencode installed. Run 'bunx oh-my-opencode install' to configure AI subscriptions."
+  if _is_interactive; then
+    # Interactive: let user choose AI providers via TUI
+    bunx oh-my-opencode install
+  else
+    # Non-interactive: safe defaults, user can reconfigure later
+    bunx oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=no
+  fi
+  oml_success "oh-my-opencode installed."
 }
 
 # ── Idempotent PATH addition ──────────────────────────────────────────────────
@@ -262,15 +277,38 @@ EOF
   oml_success "Set $var_name in $rc_file"
 }
 
+# ── Idempotent env-file source line addition ──────────────────────────────────
+_add_source_line() {
+  local source_file="$1"
+  local rc_file="$2"
+
+  if [ ! -f "$rc_file" ]; then return 0; fi
+
+  # Skip if source_file path already referenced
+  if grep -qF "$source_file" "$rc_file" 2>/dev/null; then
+    oml_info "Env source already configured in $rc_file"
+    return 0
+  fi
+
+  cat >>"$rc_file" <<EOF
+
+# oml: env — added by oh-my-longfor installer
+[ -f "${source_file}" ] && source "${source_file}"
+EOF
+  oml_success "Added env source to $rc_file"
+}
+
 # ── Configure shell rc files ──────────────────────────────────────────────────
 _configure_shell() {
   local bin_dir="$1"
   local config_file="$2"
+  local env_file="${OML_ENV_DIR}/.env.oml"
 
   for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
     if [ -f "$rc" ]; then
       _add_to_path "$bin_dir" "$rc"
       _add_env_var "OPENCODE_CONFIG" "$config_file" "$rc"
+      _add_source_line "$env_file" "$rc"
     fi
   done
 
@@ -279,6 +317,7 @@ _configure_shell() {
     touch "$HOME/.bashrc"
     _add_to_path "$bin_dir" "$HOME/.bashrc"
     _add_env_var "OPENCODE_CONFIG" "$config_file" "$HOME/.bashrc"
+    _add_source_line "$env_file" "$HOME/.bashrc"
   fi
 }
 
@@ -313,12 +352,11 @@ _print_summary() {
   local manifest_file="$1"
 
   printf "\n"
-  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
-  printf '%s\n' "${GREEN}  ✓ oh-my-longfor installed successfully!               ${NC}"
-  printf '%s\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
+  printf '%b\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
+  printf '%b\n' "${GREEN}  ✓ oh-my-longfor installed successfully!               ${NC}"
+  printf '%b\n' "${GREEN}═══════════════════════════════════════════════════════${NC}"
   printf "\n"
 
-  # Dynamic section: show what was configured from manifest
   # Dynamic section: show what was configured from manifest
   if command -v bun >/dev/null 2>&1 && [ -f "$manifest_file" ]; then
     local tmp_manifest
@@ -377,21 +415,20 @@ BUNEOF
     rm -f "$tmp_manifest"
   fi
 
-  printf '%s\n' "${BLUE}[oml]${NC} ─── Next Steps ──────────────────────────────────────────────"
+  printf '%b\n' "${BLUE}[oml]${NC} ─── Next Steps ──────────────────────────────────────────────"
   printf "\n"
-  printf '%s\n' "  ${YELLOW}1. Reload your shell${NC}"
-  printf '%s\n' "       source ~/.zshrc   # or ~/.bashrc"
+  printf '%b\n' "  ${YELLOW}1. Reload your shell${NC}"
+  printf '%s\n' "       source $(_detect_rc_file)"
   printf "\n"
-  printf '%s\n' "  ${YELLOW}2. Fill in your API keys${NC}"
-  printf '%s\n' "       cp ${OML_ENV_DIR}/.env.template ~/.env.oml"
-  printf '%s\n' "       \$EDITOR ~/.env.oml"
-  printf '%s\n' "       echo '[ -f ~/.env.oml ] && source ~/.env.oml' >> ~/.zshrc"
+  printf '%b\n' "  ${YELLOW}2. Fill in your API keys${NC}"
+  printf '%s\n' "       \Edit ${OML_ENV_DIR}/.env.oml"
+  printf '%s\n' "       # Reload the shell after editing"
   printf "\n"
-  printf '%s\n' "  ${YELLOW}3. Configure oh-my-opencode AI subscriptions${NC}"
+  printf '%b\n' "  ${YELLOW}3. Configure oh-my-opencode AI subscriptions${NC}"
   printf '%s\n' "       bunx oh-my-opencode install"
   printf '%s\n' "       # Choose which AI providers you have (Claude, Gemini, Copilot)"
   printf "\n"
-  printf '%s\n' "  ${YELLOW}4. Verify everything works${NC}"
+  printf '%b\n' "  ${YELLOW}4. Verify everything works${NC}"
   printf '%s\n' "       oml doctor"
   printf '%s\n' "       oml status"
   printf "\n"
@@ -401,9 +438,71 @@ BUNEOF
   printf "\n"
 }
 
+# ── Close inherited FDs before exec'ing new shell ────────────────────────────
+# bash heredocs and process substitutions open FDs ≥ 3. If these are inherited
+# by the new login shell, oh-my-zsh's compdef machinery emits spurious
+# "compdef: function not found" errors. Close them before exec'ing.
+#   Linux  — enumerate /proc/self/fd for exact FD set
+#   macOS  — sweep a generous fixed range (safe to over-close)
+# Note: eval is required; bash has no other way to use a variable as an FD number.
+_oml_close_extra_fds() {
+  local _max_fd=20
+  if [ -d /proc/self/fd ]; then
+    local _candidate
+    for _candidate_path in /proc/self/fd/*; do
+      _candidate="${_candidate_path##*/}"
+      case "$_candidate" in ''|*[!0-9]*) continue ;; esac
+      [ "$_candidate" -gt "$_max_fd" ] && _max_fd="$_candidate"
+    done
+  fi
+  local _fd
+  for _fd in $(seq 3 "$_max_fd"); do
+    eval "exec ${_fd}>&-" 2>/dev/null || true
+  done
+}
+
+# ── Cleanup + shell reload on exit ────────────────────────────────────────────
+# Registered at the very start of main() via 'trap _cleanup_and_reload EXIT'.
+# Runs on EXIT (normal or error) so PATH changes are always reflected,
+# even when set -euo pipefail triggers an early exit during dep installation.
+_OML_INITIAL_PATH=""   # set in main() before _ensure_* calls; empty = skip reload
+_OML_SHOULD_RELOAD=false  # set to true after _configure_shell runs successfully
+_cleanup_and_reload() {
+  local exit_code=$?
+  # Release lock (idempotent — safe if already released by Step 12)
+  oml_lock_release 2>/dev/null || true
+
+  # Reload when (a) rc files were updated (_OML_SHOULD_RELOAD) or
+  # (b) PATH changed due to new bun/opencode install (_OML_INITIAL_PATH).
+  local _do_reload=false
+  if [ "$_OML_SHOULD_RELOAD" = true ]; then
+    _do_reload=true
+  elif [ -n "$_OML_INITIAL_PATH" ] && [ "$PATH" != "$_OML_INITIAL_PATH" ]; then
+    _do_reload=true
+  fi
+
+  if [ "$_do_reload" = true ]; then
+    if _is_interactive; then
+      printf "\n"
+      if [ "$exit_code" -ne 0 ]; then
+        _warn "Installation encountered errors (exit $exit_code), but shell will be reloaded to apply PATH changes."
+      fi
+      _info "Reloading shell to apply PATH changes..."
+      _oml_close_extra_fds
+      exec "$SHELL" -l
+    else
+      _info "Run 'source $(_detect_rc_file)' (or open a new terminal) to use 'opencode'."
+    fi
+  fi
+}
+
 # ── Main install flow ─────────────────────────────────────────────────────────
 main() {
   local team_config_url="${1:-}"
+
+  # Register cleanup+reload trap immediately so it fires on any exit,
+  # including early failures during dep installation (set -euo pipefail).
+  trap '_cleanup_and_reload' EXIT INT TERM
 
   _print_banner
 
@@ -424,13 +523,13 @@ main() {
   _bootstrap_script_dir || true
 
   # ── Step 2: Install runtime dependencies ────────────────────────────────────
+  _OML_INITIAL_PATH="$PATH"   # snapshot PATH; exit trap detects modifications
   _ensure_bun
   _ensure_opencode
   _ensure_omo
 
   # ── Step 3: Acquire lock ─────────────────────────────────────────────────────
   oml_lock_acquire || exit 1
-  trap 'oml_lock_release' EXIT INT TERM
 
   # ── Step 4: Create directory structure ──────────────────────────────────────
   oml_info "Creating ~/.oml/ directory structure..."
@@ -513,10 +612,13 @@ EOF
   fi
 
   # ── Step 8: Generate configs ─────────────────────────────────────────────────
+  # These are non-fatal: config can be regenerated later via 'oml update'
   oml_info "Generating OpenCode configuration..."
   if command -v oml_generate_opencode_config >/dev/null 2>&1; then
-    oml_generate_opencode_config "$manifest_file"
-    oml_generate_omo_config "$manifest_file"
+    oml_generate_opencode_config "$manifest_file" \
+      || oml_warn "Failed to generate opencode.json (non-fatal, run 'oml update' to retry)"
+    oml_generate_omo_config "$manifest_file" \
+      || oml_warn "Failed to generate oh-my-opencode config (non-fatal, run 'oml update' to retry)"
   else
     oml_warn "lib/config.sh not available — skipping config generation"
   fi
@@ -524,17 +626,26 @@ EOF
   # ── Step 9: Generate .env template ──────────────────────────────────────────
   oml_info "Generating .env template..."
   if command -v oml_generate_env_template >/dev/null 2>&1; then
-    oml_generate_env_template "$manifest_file"
+    oml_generate_env_template "$manifest_file" \
+      || oml_warn "Failed to generate .env template (non-fatal)"
   else
     oml_warn "lib/env.sh not available — skipping .env template generation"
   fi
 
+  # ── Step 9b: Auto-copy env template for team installs ────────────────────────
+  if [ "$team_config_url" != "vanilla" ] && command -v oml_setup_env_file >/dev/null 2>&1; then
+    oml_setup_env_file \
+      || oml_warn "Failed to create env file (non-fatal)"
+  fi
+
   # ── Step 10: Install oml bin ─────────────────────────────────────────────────
-  _install_oml_bin
+  _install_oml_bin || oml_warn "Failed to install oml binary (non-fatal)"
 
   # ── Step 11: Configure shell ─────────────────────────────────────────────────
   oml_info "Configuring shell..."
-  _configure_shell "$OML_BIN_DIR" "${OML_CONFIG_DIR}/opencode.json"
+  _configure_shell "$OML_BIN_DIR" "${OML_CONFIG_DIR}/opencode.json" \
+    || oml_warn "Failed to configure shell rc files (non-fatal)"
+  _OML_SHOULD_RELOAD=true
 
   # ── Step 12: Release lock ────────────────────────────────────────────
   oml_lock_release
@@ -548,6 +659,8 @@ EOF
 
   # ── Summary ──────────────────────────────────────────────────────────────
   _print_summary "$manifest_file"
+
+  # Shell reload is handled by _cleanup_and_reload via trap EXIT
 }
 
 main "$@"

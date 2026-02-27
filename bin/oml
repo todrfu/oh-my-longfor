@@ -320,16 +320,17 @@ cmd_version() {
 # ── Command: uninstall ───────────────────────────────────────────────────────
 cmd_uninstall() {
   # Try to find uninstall.sh in order of preference:
-  # 1. $OML_HOME/lib/uninstall.sh (installed location)=
-  # 2. Download from remote if not found locally
+  # 1. $OML_HOME/lib/uninstall.sh (installed location)
+  # 2. $OML_SCRIPT_DIR/lib/uninstall.sh (development/repo location)
+  # 3. Download from remote if not found locally
   local uninstall_script=""
-  
+
   if [ -f "$OML_HOME/lib/uninstall.sh" ]; then
     uninstall_script="$OML_HOME/lib/uninstall.sh"
   elif [ -f "$OML_SCRIPT_DIR/lib/uninstall.sh" ]; then
     uninstall_script="$OML_SCRIPT_DIR/lib/uninstall.sh"
   fi
-  
+
   if [ -n "$uninstall_script" ]; then
     bash "$uninstall_script"
   else

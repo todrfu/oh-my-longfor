@@ -19,6 +19,11 @@ OML_SELF_BRANCH="${OML_SELF_BRANCH:-main}"
 # Resolve the directory where this script lives (handles curl|bash case)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-/dev/stdin}")" 2>/dev/null && pwd || echo "")"
 
+# Record whether stdin is a real TTY (before any child process runs).
+# In curl|bash mode stdin is a pipe; TUI programs need script(1) to get a pty.
+_OML_STDIN_WAS_TTY=false
+[ -t 0 ] && _OML_STDIN_WAS_TTY=true
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 _info()    { printf "${BLUE}[oml]${NC} %s\n" "$*"; }
@@ -123,7 +128,16 @@ _check_platform() {
 
 # ── Detect interactive terminal ───────────────────────────────────────────────
 _is_interactive() {
-  [ -t 0 ]
+  # Case 1: stdin is directly a TTY (normal: bash install.sh / oml install)
+  [ -t 0 ] && return 0
+  # Case 2: curl|bash — stdin is the curl pipe, but the controlling terminal
+  # (/dev/tty) is still accessible for per-command redirects.
+  # IMPORTANT: do NOT exec 0</dev/tty here — that permanently replaces stdin,
+  # which breaks bash -s (it can no longer read subsequent script lines).
+  if ([ -t 1 ] || [ -t 2 ]) && [ -e /dev/tty ]; then
+    return 0
+  fi
+  return 1
 }
 
 # ── Detect the user's primary shell rc file ───────────────────────────────
@@ -135,26 +149,14 @@ _detect_rc_file() {
   esac
 }
 
-# ── Install bun if missing (required for oh-my-opencode via bunx) ─────────────
+# ── Install bun if missing (automatic, no confirmation) ───────────────────────
 _ensure_bun() {
   if command -v bun >/dev/null 2>&1; then
     oml_success "bun found: $(bun --version 2>/dev/null || echo 'unknown version')"
     return 0
   fi
 
-  oml_warn "bun not found."
-  if _is_interactive; then
-    printf "%s" "Install bun now? [y/N] "
-    read -r answer
-    if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
-      oml_error "bun is required. Install it from https://bun.sh and re-run."
-      return 1
-    fi
-  else
-    oml_info "Non-interactive mode: installing bun automatically."
-  fi
-
-  oml_info "Installing bun..."
+  oml_info "bun not found. Installing bun..."
   curl -fsSL https://bun.sh/install | bash
   # Reload PATH
   export PATH="$HOME/.bun/bin:$PATH"
@@ -165,46 +167,95 @@ _ensure_bun() {
   oml_success "bun installed."
 }
 
-# ── Install OpenCode if missing ───────────────────────────────────────────────
+# ── Install OpenCode (with reinstall confirmation if exists) ──────────────────
 _ensure_opencode() {
+  local should_install=true
+  
   if command -v opencode >/dev/null 2>&1; then
-    oml_success "opencode found: $(opencode --version 2>/dev/null || echo 'unknown version')"
-    return 0
+    local version
+    version="$(opencode --version 2>/dev/null || echo 'unknown version')"
+    oml_warn "opencode is already installed: $version"
+    
+    if _is_interactive; then
+      printf "%s" "Reinstall opencode? [y/N] " >/dev/tty
+      read -r answer </dev/tty
+      if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+        oml_info "Skipping opencode installation."
+        should_install=false
+      fi
+    else
+      oml_info "Non-interactive mode: skipping opencode reinstallation."
+      should_install=false
+    fi
   fi
 
-  oml_info "Installing opencode via official installer..."
-  # opencode ships as a standalone binary — does NOT require bun or npm
-  # Official installer: https://opencode.ai/install
-  curl -fsSL https://opencode.ai/install | bash
-  # Reload PATH (installer places binary in ~/.opencode/bin)
-  export PATH="$HOME/.opencode/bin:$PATH"
-  if ! command -v opencode >/dev/null 2>&1; then
-    oml_error "opencode install failed. Please install manually: https://opencode.ai"
-    return 1
+  if [ "$should_install" = true ]; then
+    oml_info "Installing opencode via official installer..."
+    # opencode ships as a standalone binary — does NOT require bun or npm
+    # Official installer: https://opencode.ai/install
+    curl -fsSL https://opencode.ai/install | bash
+    # Reload PATH (installer places binary in ~/.opencode/bin)
+    export PATH="$HOME/.opencode/bin:$PATH"
+    if ! command -v opencode >/dev/null 2>&1; then
+      oml_error "opencode install failed. Please install manually: https://opencode.ai"
+      return 1
+    fi
+    oml_success "opencode installed."
+  else
+    oml_success "Using existing opencode installation."
   fi
-  oml_success "opencode installed."
 }
 
-# ── Install oh-my-opencode if missing ────────────────────────────────────────
+# ── Install oh-my-opencode (with reinstall confirmation if exists) ────────────
 _ensure_omo() {
   # Detection: oh-my-opencode registers itself as a plugin in opencode.json
   local oc_json="$HOME/.config/opencode/opencode.json"
+  local should_install=true
+  
   if [ -f "$oc_json" ] && grep -q '"oh-my-opencode"' "$oc_json" 2>/dev/null; then
-    oml_success "oh-my-opencode already installed."
+    oml_warn "oh-my-opencode is already installed."
+    
+    if _is_interactive; then
+      printf "%s" "Reinstall oh-my-opencode? [y/N] " >/dev/tty
+      read -r answer </dev/tty
+      if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+        oml_info "Skipping oh-my-opencode installation."
+        should_install=false
+      fi
+    else
+      oml_info "Non-interactive mode: skipping oh-my-opencode reinstallation."
+      should_install=false
+    fi
+  fi
+
+  if [ "$should_install" = false ]; then
+    oml_success "Using existing oh-my-opencode installation."
     return 0
   fi
 
+  # Ensure bun is installed (automatic, no confirmation)
+  _ensure_bun || return 1
+
   oml_info "Installing oh-my-opencode plugin..."
-  # oh-my-opencode is installed via bunx (requires bun, installed above)
-  # --no-tui: non-interactive mode
-  # --claude=no --gemini=no --copilot=no: safe defaults; user can reconfigure later
-  if ! command -v bun >/dev/null 2>&1; then
-    oml_error "bun is required to install oh-my-opencode. Run _ensure_bun first."
-    return 1
-  fi
   if _is_interactive; then
-    # Interactive: let user choose AI providers via TUI
-    bunx oh-my-opencode install
+    if [ "$_OML_STDIN_WAS_TTY" = true ]; then
+      # Normal mode (bash install.sh): stdin is already a real TTY
+      bunx oh-my-opencode install
+    elif command -v script >/dev/null 2>&1; then
+      # curl|bash mode: TUI needs a pty for raw keyboard input.
+      # Use script(1) to allocate a real pseudo-terminal.
+      oml_info "Allocating pty for interactive TUI..."
+      if script -q /dev/null true </dev/null >/dev/null 2>&1; then
+        script -q /dev/null bunx oh-my-opencode install </dev/tty
+      else
+        script -q -c "bunx oh-my-opencode install" /dev/null </dev/tty
+      fi
+      # Restore terminal after script(1) — it may leave raw/noecho mode
+      stty sane 2>/dev/null || true
+    else
+      # Fallback: try /dev/tty redirect (may not support raw input)
+      bunx oh-my-opencode install </dev/tty >/dev/tty 2>&1
+    fi
   else
     # Non-interactive: safe defaults, user can reconfigure later
     bunx oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=no
@@ -362,13 +413,14 @@ _print_summary() {
     local tmp_manifest
     tmp_manifest=$(mktemp)
     if bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
-      bun - "$tmp_manifest" << 'BUNEOF'
+      bun - "$tmp_manifest" << 'BUNEOF' || true
 const fs = require('fs');
 let data = {};
 try { data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch(e) { process.exit(0); }
 
 const BLUE   = '\x1b[0;34m';
 const YELLOW = '\x1b[1;33m';
+const GRAY   = '\x1b[0;90m';  // Dim gray for descriptions
 const NC     = '\x1b[0m';
 
 const mcps      = data.mcps || [];
@@ -397,7 +449,7 @@ if (requiredEv.length > 0) {
   console.log(`${YELLOW}[oml] \u26a0  API keys you must fill in:${NC}`);
   for (const v of requiredEv) {
     console.log(`  \u2022 ${v.name || ''}`);
-    if (v.description) console.log(`    ${v.description}`);
+    if (v.description) console.log(`    ${GRAY}${v.description}${NC}`);
   }
   console.log('');
 }
@@ -406,7 +458,7 @@ if (optionalEv.length > 0) {
   console.log(`${BLUE}[oml]${NC} Optional env vars (for full functionality):`);
   for (const v of optionalEv) {
     console.log(`  \u2022 ${v.name || ''}`);
-    if (v.description) console.log(`    ${v.description}`);
+    if (v.description) console.log(`    ${GRAY}${v.description}${NC}`);
   }
   console.log('');
 }
@@ -415,94 +467,44 @@ BUNEOF
     rm -f "$tmp_manifest"
   fi
 
-  printf '%b\n' "${BLUE}[oml]${NC} ─── Next Steps ──────────────────────────────────────────────"
   printf "\n"
-  printf '%b\n' "  ${YELLOW}1. Reload your shell${NC}"
-  printf '%s\n' "       source $(_detect_rc_file)"
-  printf "\n"
-  printf '%b\n' "  ${YELLOW}2. Fill in your API keys${NC}"
-  printf '%s\n' "       vim ${OML_ENV_DIR}/.env.oml"
-  printf '%s\n' "       # Reload the shell after editing"
-  printf "\n"
-  printf '%b\n' "  ${YELLOW}3. Configure oh-my-opencode AI subscriptions${NC}"
-  printf '%s\n' "       bunx oh-my-opencode install"
-  printf '%s\n' "       # Choose which AI providers you have (Claude, Gemini, Copilot)"
-  printf "\n"
-  printf '%b\n' "  ${YELLOW}4. Verify everything works${NC}"
-  printf '%s\n' "       oml doctor"
-  printf '%s\n' "       oml status"
-  printf "\n"
-  printf '%s\n' "  Config:       ${OML_CONFIG_DIR}/opencode.json"
-  printf '%s\n' "  Env template: ${OML_ENV_DIR}/.env.template"
-  printf '%s\n' "  Skills dirs:  ${HOME}/.claude/skills/ , ${HOME}/.config/opencode/skills/"
+  printf '%b\n' "┌─ ${RED}Next Steps${NC} ──────────────────────────────────────────────────────┐"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${YELLOW}⚡ 1. Restart your terminal or run:${NC}"
+  printf '%b\n' "│       ${YELLOW}source $(_detect_rc_file)${NC}"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${GREEN}2. Fill in your API keys${NC}"
+  printf '%b\n' "│       vim ${OML_ENV_DIR}/.env.oml"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${GREEN}3. Configure oh-my-opencode AI subscriptions${NC}"
+  printf '%b\n' "│       bunx oh-my-opencode install"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${GREEN}4. Verify everything works${NC}"
+  printf '%b\n' "│       oml doctor"
+  printf '%b\n' "│       oml status"
+  printf '%b\n' "│"
+  printf '%b\n' "│ ─────────────────────────────────────────────────────────────────"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${BLUE}Config:${NC}       ${OML_CONFIG_DIR}/opencode.json"
+  printf '%b\n' "│  ${BLUE}Env template:${NC} ${OML_ENV_DIR}/.env.template"
+  printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.claude/skills/"
+  printf '%b\n' "│               ${HOME}/.config/opencode/skills/"
+  printf '%b\n' "│"
+  printf '%b\n' "└──────────────────────────────────────────────────────────────────┘"
   printf "\n"
 }
 
-# ── Close inherited FDs before exec'ing new shell ────────────────────────────
-# bash heredocs and process substitutions open FDs ≥ 3. If these are inherited
-# by the new login shell, oh-my-zsh's compdef machinery emits spurious
-# "compdef: function not found" errors. Close them before exec'ing.
-#   Linux  — enumerate /proc/self/fd for exact FD set
-#   macOS  — sweep a generous fixed range (safe to over-close)
-# Note: eval is required; bash has no other way to use a variable as an FD number.
-_oml_close_extra_fds() {
-  local _max_fd=20
-  if [ -d /proc/self/fd ]; then
-    local _candidate
-    for _candidate_path in /proc/self/fd/*; do
-      _candidate="${_candidate_path##*/}"
-      case "$_candidate" in ''|*[!0-9]*) continue ;; esac
-      [ "$_candidate" -gt "$_max_fd" ] && _max_fd="$_candidate"
-    done
-  fi
-  local _fd
-  for _fd in $(seq 3 "$_max_fd"); do
-    eval "exec ${_fd}>&-" 2>/dev/null || true
-  done
-}
-
-# ── Cleanup + shell reload on exit ────────────────────────────────────────────
-# Registered at the very start of main() via 'trap _cleanup_and_reload EXIT'.
-# Runs on EXIT (normal or error) so PATH changes are always reflected,
-# even when set -euo pipefail triggers an early exit during dep installation.
-_OML_INITIAL_PATH=""   # set in main() before _ensure_* calls; empty = skip reload
-_OML_SHOULD_RELOAD=false  # set to true after _configure_shell runs successfully
-_cleanup_and_reload() {
-  local exit_code=$?
-  # Release lock (idempotent — safe if already released by Step 12)
+# ── Cleanup on exit ───────────────────────────────────────────────────────────
+# Registered at the very start of main() via 'trap _cleanup EXIT'.
+_cleanup() {
   oml_lock_release 2>/dev/null || true
-
-  # Reload when (a) rc files were updated (_OML_SHOULD_RELOAD) or
-  # (b) PATH changed due to new bun/opencode install (_OML_INITIAL_PATH).
-  local _do_reload=false
-  if [ "$_OML_SHOULD_RELOAD" = true ]; then
-    _do_reload=true
-  elif [ -n "$_OML_INITIAL_PATH" ] && [ "$PATH" != "$_OML_INITIAL_PATH" ]; then
-    _do_reload=true
-  fi
-
-  if [ "$_do_reload" = true ]; then
-    if _is_interactive; then
-      printf "\n"
-      if [ "$exit_code" -ne 0 ]; then
-        _warn "Installation encountered errors (exit $exit_code), but shell will be reloaded to apply PATH changes."
-      fi
-      _info "Reloading shell to apply PATH changes..."
-      _oml_close_extra_fds
-      exec "$SHELL" -l
-    else
-      _info "Run 'source $(_detect_rc_file)' (or open a new terminal) to use 'opencode'."
-    fi
-  fi
 }
 
 # ── Main install flow ─────────────────────────────────────────────────────────
 main() {
   local team_config_url="${1:-}"
 
-  # Register cleanup+reload trap immediately so it fires on any exit,
-  # including early failures during dep installation (set -euo pipefail).
-  trap '_cleanup_and_reload' EXIT INT TERM
+  trap '_cleanup' EXIT INT TERM
 
   _print_banner
 
@@ -523,8 +525,6 @@ main() {
   _bootstrap_script_dir || true
 
   # ── Step 2: Install runtime dependencies ────────────────────────────────────
-  _OML_INITIAL_PATH="$PATH"   # snapshot PATH; exit trap detects modifications
-  _ensure_bun
   _ensure_opencode
   _ensure_omo
 
@@ -645,7 +645,6 @@ EOF
   oml_info "Configuring shell..."
   _configure_shell "$OML_BIN_DIR" "${OML_CONFIG_DIR}/opencode.json" \
     || oml_warn "Failed to configure shell rc files (non-fatal)"
-  _OML_SHOULD_RELOAD=true
 
   # ── Step 12: Release lock ────────────────────────────────────────────
   oml_lock_release
@@ -660,7 +659,7 @@ EOF
   # ── Summary ──────────────────────────────────────────────────────────────
   _print_summary "$manifest_file"
 
-  # Shell reload is handled by _cleanup_and_reload via trap EXIT
+  exit 0
 }
 
 main "$@"

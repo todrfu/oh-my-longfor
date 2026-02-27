@@ -319,12 +319,22 @@ cmd_version() {
 
 # ── Command: uninstall ───────────────────────────────────────────────────────
 cmd_uninstall() {
-  local uninstall_script="$OML_SCRIPT_DIR/uninstall.sh"
-  if [ -f "$uninstall_script" ]; then
+  # Try to find uninstall.sh in order of preference:
+  # 1. $OML_HOME/lib/uninstall.sh (installed location)=
+  # 2. Download from remote if not found locally
+  local uninstall_script=""
+  
+  if [ -f "$OML_HOME/lib/uninstall.sh" ]; then
+    uninstall_script="$OML_HOME/lib/uninstall.sh"
+  elif [ -f "$OML_SCRIPT_DIR/lib/uninstall.sh" ]; then
+    uninstall_script="$OML_SCRIPT_DIR/lib/uninstall.sh"
+  fi
+  
+  if [ -n "$uninstall_script" ]; then
     bash "$uninstall_script"
   else
-    oml_info "Downloading uninstaller..."
-    curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
+    oml_info "Local uninstall script not found. Downloading from remote..."
+    curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/lib/uninstall.sh | bash
   fi
 }
 # ── Help text ────────────────────────────────────────────────────────────────

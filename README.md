@@ -46,6 +46,11 @@ If you have a remote Git repository containing a `manifest.yaml` file (e.g., tea
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
   curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
   | bash -s -- https://gitlab.com/your-org/team-config
+
+# or local config
+OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
+  | bash -s -- ./your_path/manifest.yaml
 ```
 
 

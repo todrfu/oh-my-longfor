@@ -107,9 +107,15 @@ const config = {
   mcp: teamMcps
 };
 
+// Add plugins from manifest
+if (manifest.plugins && Array.isArray(manifest.plugins) && manifest.plugins.length > 0) {
+  config.plugin = manifest.plugins;
+}
+
 fs.writeFileSync(outputPath, JSON.stringify(config, null, 2) + '\n');
 const count = Object.keys(teamMcps).length;
-console.log(`Generated ${outputPath}\n  MCPs: ${count}`);
+const pluginCount = config.plugin ? config.plugin.length : 0;
+console.log(`Generated ${outputPath}\n  MCPs: ${count}\n  Plugins: ${pluginCount}`);
 BUNEOF
 
   rm -f "$tmp_manifest" "$tmp_override"

@@ -86,6 +86,15 @@ skills:
       auth: token  # uses GITHUB_TOKEN env var
 
 # =============================================================================
+# Plugins
+# =============================================================================
+# OpenCode plugins (npm packages) to load automatically.
+# These extend OpenCode's functionality with custom hooks and tools.
+# =============================================================================
+plugins:
+  - "@spoons-and-mirrors/subtask2@0.3.5"
+
+# =============================================================================
 # Environment Variables
 # =============================================================================
 # All env vars required by your team's MCPs and skills.

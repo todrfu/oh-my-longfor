@@ -146,6 +146,11 @@ skills:
       subdir: "skills/"     # Default: skills/
       auth: null            # Options: null (public), token (uses GITHUB_TOKEN), ssh
 
+# ─── Plugins ────────────────────────────────────────────────
+# OpenCode plugins (npm packages) to load automatically
+plugins:
+  - "@spoons-and-mirrors/subtask2@0.3.5"
+
 # ─── Environment Variables ────────────────────────────────────
 # Defines required/optional API keys. Generates a ~/.oml/env/.env.template file.
 env:

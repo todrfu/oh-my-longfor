@@ -146,6 +146,11 @@ skills:
       subdir: "skills/"     # 默认：skills/
       auth: null            # 选项：null（公开）、token（使用 GITHUB_TOKEN）、ssh
 
+# ─── 插件 ────────────────────────────────────────────────
+# OpenCode 插件（npm 包）会自动加载
+plugins:
+  - "@spoons-and-mirrors/subtask2@0.3.5"
+
 # ─── 环境变量 ────────────────────────────────────
 # 定义必需/可选的 API Key。生成 ~/.oml/env/.env.template 文件。
 env:

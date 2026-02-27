@@ -138,6 +138,14 @@ properties:
           default: true
           description: "Whether this env var is required (true) or optional (false)"
 
+  plugins:
+    type: array
+    description: "OpenCode plugins (npm packages) to load automatically"
+    items:
+      type: string
+      description: "npm package name (e.g. 'opencode-helicone-session', '@spoons-and-mirrors/subtask2@0.3.5')"
+    default: []
+
   omo_overrides:
     type: object
     description: "oh-my-opencode configuration overrides applied on top of team defaults"

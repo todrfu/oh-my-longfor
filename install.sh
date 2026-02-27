@@ -13,7 +13,7 @@ OML_BIN_DIR="${OML_HOME}/bin"
 
 # URL to THIS installer repo — used for self-bootstrap in curl|bash mode.
 # Override with: OML_SELF_REPO=https://your-host/oh-my-longfor bash install.sh ...
-OML_SELF_REPO="${OML_SELF_REPO:-https://github.com/your-org/oh-my-longfor}"
+OML_SELF_REPO="${OML_SELF_REPO:-https://github.com/todrfu/oh-my-longfor}"
 OML_SELF_BRANCH="${OML_SELF_BRANCH:-main}"
 
 # Resolve the directory where this script lives (handles curl|bash case)

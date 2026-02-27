@@ -34,58 +34,58 @@
 如果你只是想快速安装 `opencode` 工具链并搭建一个干净的本地配置框架，不需要拉取任何远程配置：
 
 ```bash
-OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
-  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh | bash
+OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh | bash
 ```
-*（注：请将 URL 路径替换为你实际 fork 的仓库地址）*
+*（注：执行安装时必须通过 `OML_SELF_REPO` 指定仓库地址。请将 URL 路径替换为你实际 fork 的仓库地址）*
 
 ### 模式二：配置同步（Dotfiles / 团队安装）
 
 如果你有包含 `manifest.yaml` 文件的远程 Git 仓库（例如团队配置或个人 dotfiles），将仓库 URL 作为参数传入：
 
 ```bash
-OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
-  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
-  | bash -s -- https://github.com/your-org/team-config
+OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
+  | bash -s -- https://gitlab.com/your-org/team-config
 ```
 
-PJ|> **为什么 `curl | bash` 模式需要 `OML_SELF_REPO`？**
-PM|> `curl` 命令只下载入口脚本 `install.sh`。安装器需要克隆剩余的库函数（`lib/*.sh`）。通过定义 `OML_SELF_REPO`，你告诉脚本从何处克隆这些库文件。
-YJ|
-KM|### 模式三：本地开发 / 直接克隆
-VT|
-XK|如果你已经克隆了 `oh-my-longfor` 仓库（例如用于开发或测试），可以直接从本地副本运行 `install.sh`：
-HZ|
-HV|```bash
+
+### 模式三：本地开发 / 直接克隆
+
+如果你已经克隆了 `oh-my-longfor` 仓库（例如用于开发或测试），可以直接从本地副本运行 `install.sh`：
+
+```bash
 # 克隆仓库
-git clone https://github.com/your-org/oh-my-longfor.git
+git clone https://github.com/todrfu/oh-my-longfor.git
 cd oh-my-longfor
 
 #  vanilla 模式运行（无团队配置）
 ./install.sh
 
 # 或指定团队配置仓库
-./install.sh https://github.com/your-org/team-config
+./install.sh https://gitlab.com/your-org/team-config
 
 # 或指定本地 manifest 文件
 ./install.sh ./my-local-config/manifest.yaml
 ```
-VR|
-SQ|安装器会自动检测当前是本地目录运行，并使用当前目录下的 `lib/` 和 `bin/oml`。
-ZJ|
-PY|### 安装后步骤
-> `curl` 命令只下载入口脚本 `install.sh`。安装器需要克隆剩余的库函数（`lib/*.sh`）。通过定义 `OML_SELF_REPO`，你告诉脚本从何处克隆这些库文件。
+
+安装器会自动检测当前是本地目录运行，并使用当前目录下的 `lib/` 和 `bin/oml`。
 
 ### 安装后步骤
 
-安装完成后：
+安装完成后，脚本会**自动重新加载你的 Shell**（通过 `exec "$SHELL" -l`），所以新配置会立即生效。
 
-1. **重新加载 Shell：**
+接下来，你可能还需要进行以下操作：
+
+1. **添加必须的 API Key：**
+   `oh-my-longfor` 设置了一个集中的环境变量文件。如果你团队的 `manifest.yaml` 需要用到某些 API Key，请编辑该文件并填入对应的值：
    ```bash
-   source ~/.zshrc   # 或 ~/.bashrc
+   nano ~/.oml/env/.env.oml
    ```
+   *(如果不确定需要哪些 Key，可以运行 `oml env` 查看)。*
 
 2. **配置你的 AI 订阅（Claude / Gemini / Copilot 等）：**
+   为 OpenCode 设置你偏好的大语言模型提供商：
    ```bash
    bunx oh-my-opencode install
    ```
@@ -136,7 +136,7 @@ mcps:
 # 仓库会被克隆到 ~/.oml/repos/，并创建软链接以便发现
 skills:
   repos:
-    - repo: "https://github.com/your-org/shared-skills"
+    - repo: "https://gitlab.com/your-org/shared-skills"
       branch: main          # 默认：main
       subdir: "skills/"     # 默认：skills/
       auth: null            # 选项：null（公开）、token（使用 GITHUB_TOKEN）、ssh
@@ -247,30 +247,25 @@ oml rollback 2026-02-25-143022
 
 - OpenCode 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置（通过 Shell rc 注入）。
 - Skills 被软链接到标准位置，以确保 OpenCode 原生加载器和 Claude Code 都能发现它们。
-> **关于 `curl | bash` 模式的说明**：oml 会临时将自身库文件克隆到 `~/.oml/.bootstrap` 以加载必要的函数。安装成功完成后，该缓存目录会被**自动清除**。
 
 ---
 
 ## ❓ 常见问题
 
 **Q：如何安全管理 API Key？**
-运行 `oml env` 查看所需的 Key。复制生成的模板：
+运行 `oml env` 查看所需的 Key。安装器已自动将模板复制为 `~/.oml/env/.env.oml`，并配置了你的 Shell 在启动时自动加载它。你只需编辑该文件即可：
 ```bash
-cp ~/.oml/env/.env.template ~/.env.oml
-$EDITOR ~/.env.oml
-echo '[ -f ~/.env.oml ] && source ~/.env.oml' >> ~/.zshrc
+nano ~/.oml/env/.env.oml
 ```
 
 **Q：`curl | bash` 失败提示 "Could not clone oml repo"？**
-确保在命令前加上 `OML_SELF_REPO`。脚本需要知道从何处下载库文件。
+确保在命令前正确设置了 `OML_SELF_REPO` 环境变量，指向安装脚本所在的仓库 URL。
 
 **Q：如何完全卸载？**
+你可以使用提供的一键卸载脚本，干净地从系统中移除 `oh-my-longfor`、`opencode` 和 `oh-my-opencode`（包括 RC 注入和全局包）：
 ```bash
-rm -rf ~/.oml
-rm -rf ~/.claude/skills
-rm -rf ~/.config/opencode/skills
+curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
 ```
-然后，从 `~/.zshrc` 或 `~/.bashrc` 中删除 `# oml:` 注释包裹的行。
 
 ---
 

@@ -33,58 +33,59 @@ You can install `oh-my-longfor` in one of two modes:
 Perfect if you just want to quickly install the `opencode` toolchain and set up a clean, local configuration framework. No remote configuration is pulled.
 
 ```bash
-OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
-  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh | bash
+OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh | bash
 ```
-*(Note: Replace the URL paths with your actual repository if you have forked this project).*
+*(Note: You must set `OML_SELF_REPO` to the repository URL so the installer can download its dependencies. Replace the URLs with your actual repository if you have forked this project).*
 
 ### Mode 2: Dotfiles / Team Installation (Sync Mode)
 
 If you have a remote Git repository containing a `manifest.yaml` file (e.g., team dotfiles or your personal configurations), pass the repository URL as an argument:
 
 ```bash
-OML_SELF_REPO=https://github.com/your-org/oh-my-longfor \
-  curl -fsSL https://raw.githubusercontent.com/your-org/oh-my-longfor/main/install.sh \
-  | bash -s -- https://github.com/your-org/team-config
+OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
+  curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
+  | bash -s -- https://gitlab.com/your-org/team-config
 ```
 
-RR|> **Why is `OML_SELF_REPO` required in `curl | bash` mode?**
-BH|> The `curl` command only downloads the entry `install.sh` script. The installer needs to clone the rest of the library functions (`lib/*.sh`). By defining `OML_SELF_REPO`, you tell the script where to clone the library from.
-NB|
-KR|### Mode 3: Local Development / Direct Clone
-VT|
-JQ|If you have cloned the `oh-my-longfor` repository directly (e.g., for development or testing), you can run `install.sh` directly from your local copy:
-BP|
-HV|```bash
+
+### Mode 3: Local Development / Direct Clone
+
+If you have cloned the `oh-my-longfor` repository directly (e.g., for development or testing), you can run `install.sh` directly from your local copy:
+
+```bash
 # Clone the repo
- git clone https://github.com/your-org/oh-my-longfor.git
+git clone https://github.com/todrfu/oh-my-longfor.git
 cd oh-my-longfor
 
 # Run with vanilla mode (no team config)
- ./install.sh
+./install.sh
 
 # Or with a team config URL
- ./install.sh https://github.com/your-org/team-config
+./install.sh https://gitlab.com/your-org/team-config
 
 # Or with a local manifest file
- ./install.sh ./my-local-config/manifest.yaml
+./install.sh ./my-local-config/manifest.yaml
 ```
-VN|
-BM|The installer automatically detects that it's running from a local directory and uses the `lib/` and `bin/oml` from the current directory.
-KV|
-XT|### Post-Installation Steps
-> The `curl` command only downloads the entry `install.sh` script. The installer needs to clone the rest of the library functions (`lib/*.sh`). By defining `OML_SELF_REPO`, you tell the script where to clone the library from.
+
+The installer automatically detects that it's running from a local directory and uses the `lib/` and `bin/oml` from the current directory.
+
 
 ### Post-Installation Steps
 
-After the installation finishes:
+After the installation finishes, the script will **automatically reload your shell** (via `exec "$SHELL" -l`), so your new configuration is active immediately.
 
-1. **Reload your shell:**
+Next, you may need to:
+
+1. **Add your required API Keys:**
+   `oh-my-longfor` sets up a centralized environment file. Edit it to add any API keys your team's `manifest.yaml` requires:
    ```bash
-   source ~/.zshrc   # or ~/.bashrc
+   nano ~/.oml/env/.env.oml
    ```
+   *(Run `oml env` if you aren't sure which keys are required).*
 
-2. **Configure your AI subscriptions (Claude / Gemini / Copilot, etc):**
+2. **Configure your AI subscriptions (Claude / Gemini / Copilot, etc.):**
+   Set up your preferred LLM provider for OpenCode:
    ```bash
    bunx oh-my-opencode install
    ```
@@ -135,7 +136,7 @@ mcps:
 # Repositories are cloned to ~/.oml/repos/ and symlinked for discovery
 skills:
   repos:
-    - repo: "https://github.com/your-org/shared-skills"
+    - repo: "https://gitlab.com/your-org/shared-skills"
       branch: main          # Default: main
       subdir: "skills/"     # Default: skills/
       auth: null            # Options: null (public), token (uses GITHUB_TOKEN), ssh
@@ -246,30 +247,25 @@ oml rollback 2026-02-25-143022
 
 - OpenCode resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json` (injected into shell rc).
 - Skills are symlinked to standard locations to ensure they are discovered by both OpenCode's native loader and Claude Code.
-> **Note on `curl | bash` mode:** oml temporarily clones its own library into `~/.oml/.bootstrap` to make library functions available. This cache is automatically removed at the end of a successful installation.
 
 ---
 
 ## ❓ FAQ
 
 **Q: How do I manage API Keys securely?**
-Run `oml env` to see required keys. Copy the generated template:
+Run `oml env` to see required keys. The installer automatically copies the template to `~/.oml/env/.env.oml` and configures your shell to source it. You just need to edit it:
 ```bash
-cp ~/.oml/env/.env.template ~/.env.oml
-$EDITOR ~/.env.oml
-echo '[ -f ~/.env.oml ] && source ~/.env.oml' >> ~/.zshrc
+nano ~/.oml/env/.env.oml
 ```
 
 **Q: `curl | bash` fails with "Could not clone oml repo"?**
-Ensure you prefix the command with `OML_SELF_REPO`. The script needs to know where to download its library files from.
+Ensure you prefix the command with `OML_SELF_REPO` pointing to the script's repository URL.
 
 **Q: How do I completely uninstall?**
+You can use the provided uninstallation script to cleanly remove `oh-my-longfor`, `opencode`, and `oh-my-opencode` from your system (including RC injections and global packages):
 ```bash
-rm -rf ~/.oml
-rm -rf ~/.claude/skills
-rm -rf ~/.config/opencode/skills
+curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
 ```
-Then, remove the lines enclosed in `# oml:` comments from your `~/.zshrc` or `~/.bashrc`.
 
 ---
 

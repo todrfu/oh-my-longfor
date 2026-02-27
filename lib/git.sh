@@ -38,12 +38,19 @@ oml_git_pull() {
 
   oml_info "Pulling latest changes in $repo_dir"
 
-  if git -C "$repo_dir" pull --ff-only 2>&1; then
+  local git_output
+  if git_output=$(git -C "$repo_dir" pull --ff-only 2>&1); then
     oml_success "Updated $repo_dir"
   else
-    oml_warn "Could not fast-forward pull in $repo_dir (may have diverged)"
-    oml_warn "Run: git -C $repo_dir status — for details"
-    oml_warn "Skipping update for this repo to preserve your changes."
+    # Distinguish network errors from actual divergence
+    if echo "$git_output" | grep -qiE 'SSL_|Could not resolve host|Connection refused|Network is unreachable|Failed to connect|unable to access|Connection timed out'; then
+      oml_warn "Network error pulling $repo_dir — using existing local copy."
+      oml_warn "If you need the latest version, check your network/proxy and retry."
+    else
+      oml_warn "Could not fast-forward pull in $repo_dir (may have diverged)"
+      oml_warn "Run: git -C $repo_dir status — for details"
+      oml_warn "Skipping update for this repo to preserve your changes."
+    fi
     return 0  # Don't fail — just warn and continue
   fi
 }

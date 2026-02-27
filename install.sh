@@ -421,7 +421,7 @@ BUNEOF
   printf '%s\n' "       source $(_detect_rc_file)"
   printf "\n"
   printf '%b\n' "  ${YELLOW}2. Fill in your API keys${NC}"
-  printf '%s\n' "       \Edit ${OML_ENV_DIR}/.env.oml"
+  printf '%s\n' "       vim ${OML_ENV_DIR}/.env.oml"
   printf '%s\n' "       # Reload the shell after editing"
   printf "\n"
   printf '%b\n' "  ${YELLOW}3. Configure oh-my-opencode AI subscriptions${NC}"

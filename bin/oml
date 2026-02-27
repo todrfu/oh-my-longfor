@@ -316,6 +316,17 @@ cmd_version() {
   echo "oml version $OML_VERSION"
 }
 
+
+# ── Command: uninstall ───────────────────────────────────────────────────────
+cmd_uninstall() {
+  local uninstall_script="$OML_SCRIPT_DIR/uninstall.sh"
+  if [ -f "$uninstall_script" ]; then
+    bash "$uninstall_script"
+  else
+    oml_info "Downloading uninstaller..."
+    curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
+  fi
+}
 # ── Help text ────────────────────────────────────────────────────────────────
 cmd_help() {
   cat <<'HELP'
@@ -334,6 +345,7 @@ cmd_help() {
     override <subcommand>  Manage personal MCP/skill additions
     rollback [timestamp]   Restore configs from a previous backup
     backup list            List available config backups
+    uninstall              Completely remove oh-my-longfor, OpenCode, and oh-my-opencode
     version                Print oml version
     help                   Show this help message
 
@@ -372,6 +384,7 @@ case "$command" in
   override) cmd_override "$@" ;;
   rollback) cmd_rollback "$@" ;;
   backup)   cmd_backup "$@" ;;
+  uninstall) cmd_uninstall "$@" ;;
   version|--version|-v) cmd_version ;;
   help|--help|-h)       cmd_help ;;
   *)

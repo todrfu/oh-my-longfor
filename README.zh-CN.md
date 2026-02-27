@@ -80,7 +80,7 @@ cd oh-my-longfor
 1. **添加必须的 API Key：**
    `oh-my-longfor` 设置了一个集中的环境变量文件。如果你团队的 `manifest.yaml` 需要用到某些 API Key，请编辑该文件并填入对应的值：
    ```bash
-   nano ~/.oml/env/.env.oml
+   vim ~/.oml/env/.env.oml
    ```
    *(如果不确定需要哪些 Key，可以运行 `oml env` 查看)。*
 
@@ -255,17 +255,18 @@ oml rollback 2026-02-25-143022
 **Q：如何安全管理 API Key？**
 运行 `oml env` 查看所需的 Key。安装器已自动将模板复制为 `~/.oml/env/.env.oml`，并配置了你的 Shell 在启动时自动加载它。你只需编辑该文件即可：
 ```bash
-nano ~/.oml/env/.env.oml
+vim ~/.oml/env/.env.oml
 ```
 
 **Q：`curl | bash` 失败提示 "Could not clone oml repo"？**
 确保在命令前正确设置了 `OML_SELF_REPO` 环境变量，指向安装脚本所在的仓库 URL。
 
 **Q：如何完全卸载？**
-你可以使用提供的一键卸载脚本，干净地从系统中移除 `oh-my-longfor`、`opencode` 和 `oh-my-opencode`（包括 RC 注入和全局包）：
+你可以直接运行内置的卸载命令，干净地从系统中移除 `oh-my-longfor`、`opencode` 和 `oh-my-opencode`（包括环境变量注入和全局包）：
 ```bash
-curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
+oml uninstall
 ```
+*（如果你当前环境无法使用 oml 命令，也可以执行：`curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash`）*
 
 ---
 

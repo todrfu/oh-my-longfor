@@ -80,7 +80,7 @@ Next, you may need to:
 1. **Add your required API Keys:**
    `oh-my-longfor` sets up a centralized environment file. Edit it to add any API keys your team's `manifest.yaml` requires:
    ```bash
-   nano ~/.oml/env/.env.oml
+   vim ~/.oml/env/.env.oml
    ```
    *(Run `oml env` if you aren't sure which keys are required).*
 
@@ -255,17 +255,18 @@ oml rollback 2026-02-25-143022
 **Q: How do I manage API Keys securely?**
 Run `oml env` to see required keys. The installer automatically copies the template to `~/.oml/env/.env.oml` and configures your shell to source it. You just need to edit it:
 ```bash
-nano ~/.oml/env/.env.oml
+vim ~/.oml/env/.env.oml
 ```
 
 **Q: `curl | bash` fails with "Could not clone oml repo"?**
 Ensure you prefix the command with `OML_SELF_REPO` pointing to the script's repository URL.
 
 **Q: How do I completely uninstall?**
-You can use the provided uninstallation script to cleanly remove `oh-my-longfor`, `opencode`, and `oh-my-opencode` from your system (including RC injections and global packages):
+You can use the built-in command to cleanly remove `oh-my-longfor`, `opencode`, and `oh-my-opencode` from your system (including RC injections and global packages):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash
+oml uninstall
 ```
+*(Alternatively, you can run: `curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/uninstall.sh | bash`)*
 
 ---
 

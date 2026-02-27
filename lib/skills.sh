@@ -56,8 +56,12 @@ oml_sync_skills() {
     oml_info "Syncing skill repo: $repo_url (branch: $branch)"
     
     # Generate a safe folder name from the repo URL
+    # Use "owner--repo" format to avoid collisions (e.g. anthropics/skills vs antfu/skills)
     local repo_name
-    repo_name=$(basename "$repo_url" .git)
+    local _repo_base _repo_owner
+    _repo_base=$(basename "$repo_url" .git)
+    _repo_owner=$(basename "$(dirname "$repo_url")")
+    repo_name="${_repo_owner}--${_repo_base}"
     local target_dir="${OML_HOME}/repos/${repo_name}"
 
     if [ -d "${target_dir}/.git" ]; then
@@ -134,15 +138,27 @@ oml_create_skill_symlinks() {
       local skill_name
       skill_name="$(basename "$skill_dir")"
       
+      # Extract repo_name from path (e.g. from "${OML_HOME}/repos/owner--repo/...")
+      local rel_path="${skill_dir#${OML_HOME}/repos/}"
+      local repo_name="${rel_path%%/*}"
+      
+      # Determine safe link name to avoid collision across repos
+      local safe_skill_name="$skill_name"
+      if [ -e "${claude_target_dir}/${skill_name}" ] || [ -L "${claude_target_dir}/${skill_name}" ] || \
+         [ -e "${opencode_target_dir}/${skill_name}" ] || [ -L "${opencode_target_dir}/${skill_name}" ]; then
+        # If a link already exists from another repo, prefix with repo name
+        safe_skill_name="${repo_name}--${skill_name}"
+      fi
+
       # Symlink to ~/.claude/skills/
-      local claude_link_path="${claude_target_dir}/${skill_name}"
-      if [ ! -e "$claude_link_path" ]; then
+      local claude_link_path="${claude_target_dir}/${safe_skill_name}"
+      if [ ! -e "$claude_link_path" ] && [ ! -L "$claude_link_path" ]; then
         ln -s "$skill_dir" "$claude_link_path"
       fi
 
       # Symlink to ~/.config/opencode/skills/
-      local opencode_link_path="${opencode_target_dir}/${skill_name}"
-      if [ ! -e "$opencode_link_path" ]; then
+      local opencode_link_path="${opencode_target_dir}/${safe_skill_name}"
+      if [ ! -e "$opencode_link_path" ] && [ ! -L "$opencode_link_path" ]; then
         ln -s "$skill_dir" "$opencode_link_path"
       fi
       

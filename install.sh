@@ -25,7 +25,7 @@ _OML_STDIN_WAS_TTY=false
 [ -t 0 ] && _OML_STDIN_WAS_TTY=true
 
 # ── Logging ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; GRAY='\033[0;90m'; NC='\033[0m'
 _info()    { printf "${BLUE}[oml]${NC} %s\n" "$*"; }
 _warn()    { printf "${YELLOW}[oml] WARNING:${NC} %s\n" "$*" >&2; }
 _error()   { printf "${RED}[oml] ERROR:${NC} %s\n" "$*" >&2; }
@@ -467,19 +467,21 @@ BUNEOF
     rm -f "$tmp_manifest"
   fi
 
+  _rc_file="$(_detect_rc_file)"
   printf "\n"
   printf '%b\n' "┌─ ${RED}Next Steps${NC} ──────────────────────────────────────────────────────┐"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${YELLOW}⚡ 1. Restart your terminal or run:${NC}"
-  printf '%b\n' "│       ${YELLOW}source $(_detect_rc_file)${NC}"
+  printf '%b\n' "│  ${GREEN}1. ⚡ Restart your terminal or run:${NC}"
+  printf '%b\n' "│       ${RED}source ${_rc_file}${NC}"
   printf '%b\n' "│"
   printf '%b\n' "│  ${GREEN}2. Fill in your API keys${NC}"
   printf '%b\n' "│       vim ${OML_ENV_DIR}/.env.oml"
+  printf '%b\n' "│       ${GRAY}After that, run: source ${_rc_file}${NC}"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}3. Configure oh-my-opencode AI subscriptions${NC}"
+  printf '%b\n' "│  ${GREEN}3. You can also configure oh-my-opencode AI subscriptions (optional)${NC}"
   printf '%b\n' "│       bunx oh-my-opencode install"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}4. Verify everything works${NC}"
+  printf '%b\n' "│  ${GREEN}4. Verify everything works (optional)${NC}"
   printf '%b\n' "│       oml doctor"
   printf '%b\n' "│       oml status"
   printf '%b\n' "│"
@@ -487,8 +489,7 @@ BUNEOF
   printf '%b\n' "│"
   printf '%b\n' "│  ${BLUE}Config:${NC}       ${OML_CONFIG_DIR}/opencode.json"
   printf '%b\n' "│  ${BLUE}Env template:${NC} ${OML_ENV_DIR}/.env.template"
-  printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.claude/skills/"
-  printf '%b\n' "│               ${HOME}/.config/opencode/skills/"
+  printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.config/opencode/skills/"
   printf '%b\n' "│"
   printf '%b\n' "└──────────────────────────────────────────────────────────────────┘"
   printf "\n"

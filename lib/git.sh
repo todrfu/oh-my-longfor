@@ -56,8 +56,17 @@ oml_git_clone_or_pull() {
   local branch="${3:-main}"
 
   if [ -d "$dest/.git" ]; then
+    # Already a git repository — pull latest changes
     oml_git_pull "$dest"
+  elif [ -d "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+    # Directory exists but is not a git repo (e.g., failed previous install)
+    oml_warn "Non-git directory exists: $dest"
+    oml_warn "Removing stale directory to proceed with fresh clone..."
+    rm -rf "$dest"
+    mkdir -p "$(dirname "$dest")"
+    oml_git_clone "$url" "$dest" "$branch"
   else
+    # Directory doesn't exist or is empty — clone
     mkdir -p "$(dirname "$dest")"
     oml_git_clone "$url" "$dest" "$branch"
   fi

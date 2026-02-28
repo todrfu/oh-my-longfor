@@ -11,7 +11,11 @@ _ensure_opencode() {
     
     if _is_interactive; then
       printf "%s" "Reinstall opencode? [y/N] " >/dev/tty
-      read -r answer </dev/tty
+      if ! read -r answer </dev/tty; then
+        echo
+        oml_error "Installation aborted by user."
+        exit 130
+      fi
       if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
         oml_info "Skipping opencode installation."
         should_install=false
@@ -50,7 +54,11 @@ _ensure_omo() {
     
     if _is_interactive; then
       printf "%s" "Reinstall oh-my-opencode? [y/N] " >/dev/tty
-      read -r answer </dev/tty
+      if ! read -r answer </dev/tty; then
+        echo
+        oml_error "Installation aborted by user."
+        exit 130
+      fi
       if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
         oml_info "Skipping oh-my-opencode installation."
         should_install=false

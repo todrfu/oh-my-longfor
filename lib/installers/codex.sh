@@ -11,7 +11,11 @@ _ensure_codex() {
     
     if _is_interactive; then
       printf "%s" "Reinstall codex cli? [y/N] " >/dev/tty
-      read -r answer </dev/tty
+      if ! read -r answer </dev/tty; then
+        echo
+        oml_error "Installation aborted by user."
+        exit 130
+      fi
       if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
         oml_info "Skipping codex cli installation."
         should_install=false

@@ -437,7 +437,9 @@ _cleanup() {
 main() {
   local team_config_url="${1:-}"
 
-  trap '_cleanup' EXIT INT TERM
+  trap '_cleanup' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
 
   _print_banner
 
@@ -466,7 +468,11 @@ main() {
       printf "%b\n" "  2) claude" >/dev/tty
       printf "%b\n" "  3) codex" >/dev/tty
       printf "%s" "Select [1-3] " >/dev/tty
-      read -r choice </dev/tty
+      if ! read -r choice </dev/tty; then
+        echo
+        oml_error "Installation aborted by user."
+        exit 130
+      fi
       case "$choice" in
         2) OML_TOOL="claude" ;;
         3) OML_TOOL="codex" ;;

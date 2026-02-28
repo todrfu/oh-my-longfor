@@ -367,7 +367,7 @@ cmd_help() {
     oml override remove <mcp|skill> <name>
 
   EXAMPLES:
-    oml install https://gitlab.com/your-org/team-config
+    oml install https://github.com/todrfu/oh-my-longfor-config-example
     oml install ./team-config           # local directory
     oml install ./manifest.yaml         # single manifest file
     oml update

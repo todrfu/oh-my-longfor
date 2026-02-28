@@ -167,102 +167,6 @@ _ensure_bun() {
   oml_success "bun installed."
 }
 
-# ── Install OpenCode (with reinstall confirmation if exists) ──────────────────
-_ensure_opencode() {
-  local should_install=true
-  
-  if command -v opencode >/dev/null 2>&1; then
-    local version
-    version="$(opencode --version 2>/dev/null || echo 'unknown version')"
-    oml_warn "opencode is already installed: $version"
-    
-    if _is_interactive; then
-      printf "%s" "Reinstall opencode? [y/N] " >/dev/tty
-      read -r answer </dev/tty
-      if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
-        oml_info "Skipping opencode installation."
-        should_install=false
-      fi
-    else
-      oml_info "Non-interactive mode: skipping opencode reinstallation."
-      should_install=false
-    fi
-  fi
-
-  if [ "$should_install" = true ]; then
-    oml_info "Installing opencode via official installer..."
-    # opencode ships as a standalone binary — does NOT require bun or npm
-    # Official installer: https://opencode.ai/install
-    curl -fsSL https://opencode.ai/install | bash
-    # Reload PATH (installer places binary in ~/.opencode/bin)
-    export PATH="$HOME/.opencode/bin:$PATH"
-    if ! command -v opencode >/dev/null 2>&1; then
-      oml_error "opencode install failed. Please install manually: https://opencode.ai"
-      return 1
-    fi
-    oml_success "opencode installed."
-  else
-    oml_success "Using existing opencode installation."
-  fi
-}
-
-# ── Install oh-my-opencode (with reinstall confirmation if exists) ────────────
-_ensure_omo() {
-  # Detection: oh-my-opencode registers itself as a plugin in opencode.json
-  local oc_json="$HOME/.config/opencode/opencode.json"
-  local should_install=true
-  
-  if [ -f "$oc_json" ] && grep -q '"oh-my-opencode"' "$oc_json" 2>/dev/null; then
-    oml_warn "oh-my-opencode is already installed."
-    
-    if _is_interactive; then
-      printf "%s" "Reinstall oh-my-opencode? [y/N] " >/dev/tty
-      read -r answer </dev/tty
-      if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
-        oml_info "Skipping oh-my-opencode installation."
-        should_install=false
-      fi
-    else
-      oml_info "Non-interactive mode: skipping oh-my-opencode reinstallation."
-      should_install=false
-    fi
-  fi
-
-  if [ "$should_install" = false ]; then
-    oml_success "Using existing oh-my-opencode installation."
-    return 0
-  fi
-
-  # Ensure bun is installed (automatic, no confirmation)
-  _ensure_bun || return 1
-
-  oml_info "Installing oh-my-opencode plugin..."
-  if _is_interactive; then
-    if [ "$_OML_STDIN_WAS_TTY" = true ]; then
-      # Normal mode (bash install.sh): stdin is already a real TTY
-      bunx oh-my-opencode install
-    elif command -v script >/dev/null 2>&1; then
-      # curl|bash mode: TUI needs a pty for raw keyboard input.
-      # Use script(1) to allocate a real pseudo-terminal.
-      oml_info "Allocating pty for interactive TUI..."
-      if script -q /dev/null true </dev/null >/dev/null 2>&1; then
-        script -q /dev/null bunx oh-my-opencode install </dev/tty
-      else
-        script -q -c "bunx oh-my-opencode install" /dev/null </dev/tty
-      fi
-      # Restore terminal after script(1) — it may leave raw/noecho mode
-      stty sane 2>/dev/null || true
-    else
-      # Fallback: try /dev/tty redirect (may not support raw input)
-      bunx oh-my-opencode install </dev/tty >/dev/tty 2>&1
-    fi
-  else
-    # Non-interactive: safe defaults, user can reconfigure later
-    bunx oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=no
-  fi
-  oml_success "oh-my-opencode installed."
-}
-
 # ── Idempotent PATH addition ──────────────────────────────────────────────────
 _add_to_path() {
   local bin_dir="$1"
@@ -490,18 +394,34 @@ BUNEOF
   printf '%b\n' "│"
   printf '%b\n' "│       ${GRAY}After that, run: source ${_rc_file}${NC}"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}3. You can also configure oh-my-opencode AI subscriptions (optional)${NC}"
-  printf '%b\n' "│       bunx oh-my-opencode install"
-  printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}4. Verify everything works (optional)${NC}"
+  
+  if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
+    printf '%b\n' "│  ${GREEN}3. Configure oh-my-opencode AI subscriptions (optional)${NC}"
+    printf '%b\n' "│       bunx oh-my-opencode install"
+    printf '%b\n' "│"
+    printf '%b\n' "│  ${GREEN}4. Verify everything works (optional)${NC}"
+  else
+    printf '%b\n' "│  ${GREEN}3. Verify everything works (optional)${NC}"
+  fi
+  
   printf '%b\n' "│       oml doctor"
   printf '%b\n' "│       oml status"
   printf '%b\n' "│"
   printf '%b\n' "│ ─────────────────────────────────────────────────────────────────"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${BLUE}Config:${NC}       ${OML_CONFIG_DIR}/opencode.json"
+  
+  if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
+    printf '%b\n' "│  ${BLUE}Config:${NC}       ${OML_CONFIG_DIR}/opencode.json"
+    printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.config/opencode/skills/"
+  elif [ "${OML_TOOL}" = "claude" ]; then
+    printf '%b\n' "│  ${BLUE}Config:${NC}       ${HOME}/.claude.json"
+    printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.claude/skills/"
+  elif [ "${OML_TOOL}" = "codex" ]; then
+    printf '%b\n' "│  ${BLUE}Config:${NC}       ${HOME}/.codex/config.toml"
+    printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.codex/skills/"
+  fi
+  
   printf '%b\n' "│  ${BLUE}Env template:${NC} ${OML_ENV_DIR}/.env.template"
-  printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.config/opencode/skills/"
   printf '%b\n' "│"
   printf '%b\n' "└──────────────────────────────────────────────────────────────────┘"
   printf "\n"
@@ -538,8 +458,34 @@ main() {
   _bootstrap_script_dir || true
 
   # ── Step 2: Install runtime dependencies ────────────────────────────────────
-  _ensure_opencode
-  _ensure_omo
+  oml_info "Selecting AI development tool to install..."
+  if [ -z "${OML_TOOL:-}" ]; then
+    if _is_interactive; then
+      printf "%b\n" "Which tool would you like to install?" >/dev/tty
+      printf "%b\n" "  1) opencode  (default)" >/dev/tty
+      printf "%b\n" "  2) claude" >/dev/tty
+      printf "%b\n" "  3) codex" >/dev/tty
+      printf "%s" "Select [1-3] " >/dev/tty
+      read -r choice </dev/tty
+      case "$choice" in
+        2) OML_TOOL="claude" ;;
+        3) OML_TOOL="codex" ;;
+        *) OML_TOOL="opencode" ;;
+      esac
+    else
+      OML_TOOL="opencode"
+    fi
+  fi
+
+  oml_info "Selected tool: $OML_TOOL"
+  local installer_script="$SCRIPT_DIR/lib/installers/${OML_TOOL}.sh"
+  if [ -f "$installer_script" ]; then
+    source "$installer_script"
+    _install_tool || oml_error "Failed to install $OML_TOOL"
+  else
+    oml_error "Installer for $OML_TOOL not found at $installer_script"
+    exit 1
+  fi
 
   # ── Step 3: Acquire lock ─────────────────────────────────────────────────────
   oml_lock_acquire || exit 1

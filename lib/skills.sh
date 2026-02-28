@@ -120,9 +120,11 @@ BUNEOF
 oml_create_skill_symlinks() {
   local claude_target_dir="$HOME/.claude/skills"
   local opencode_target_dir="$HOME/.config/opencode/skills"
+  local codex_target_dir="$HOME/.codex/skills"
   
   mkdir -p "$claude_target_dir"
   mkdir -p "$opencode_target_dir"
+  mkdir -p "$codex_target_dir"
 
   # Clean existing symlinks managed by oml to prevent dead links
   oml_remove_skill_symlinks
@@ -145,7 +147,8 @@ oml_create_skill_symlinks() {
       # Determine safe link name to avoid collision across repos
       local safe_skill_name="$skill_name"
       if [ -e "${claude_target_dir}/${skill_name}" ] || [ -L "${claude_target_dir}/${skill_name}" ] || \
-         [ -e "${opencode_target_dir}/${skill_name}" ] || [ -L "${opencode_target_dir}/${skill_name}" ]; then
+         [ -e "${opencode_target_dir}/${skill_name}" ] || [ -L "${opencode_target_dir}/${skill_name}" ] || \
+         [ -e "${codex_target_dir}/${skill_name}" ] || [ -L "${codex_target_dir}/${skill_name}" ]; then
         # If a link already exists from another repo, prefix with repo name
         safe_skill_name="${repo_name}--${skill_name}"
       fi
@@ -162,12 +165,18 @@ oml_create_skill_symlinks() {
         ln -s "$skill_dir" "$opencode_link_path"
       fi
       
+      # Symlink to ~/.codex/skills/
+      local codex_link_path="${codex_target_dir}/${safe_skill_name}"
+      if [ ! -e "$codex_link_path" ] && [ ! -L "$codex_link_path" ]; then
+        ln -s "$skill_dir" "$codex_link_path"
+      fi
+      
       ((count++))
     done < <(find "${OML_HOME}/repos" -type f -name "SKILL.md" -print0)
   fi
 
   if [ "$count" -gt 0 ]; then
-    oml_success "Symlinked $count skills to discovery paths"
+    oml_success "Symlinked $count skills to discovery paths (opencode, claude, codex)"
   else
     oml_info "No skills found to symlink"
   fi
@@ -178,9 +187,10 @@ oml_create_skill_symlinks() {
 oml_remove_skill_symlinks() {
   local claude_target_dir="$HOME/.claude/skills"
   local opencode_target_dir="$HOME/.config/opencode/skills"
+  local codex_target_dir="$HOME/.codex/skills"
   local count=0
 
-  for target_dir in "$claude_target_dir" "$opencode_target_dir"; do
+  for target_dir in "$claude_target_dir" "$opencode_target_dir" "$codex_target_dir"; do
     if [ -d "$target_dir" ]; then
       # Only remove symlinks that point into ~/.oml/repos
       for link in "$target_dir"/*; do
@@ -188,7 +198,7 @@ oml_remove_skill_symlinks() {
           local target
           target="$(readlink "$link")"
           if [[ "$target" == "${OML_HOME}/repos/"* ]]; then
-            rm "$link"
+            rm -f "$link"
             ((count++))
           fi
         fi

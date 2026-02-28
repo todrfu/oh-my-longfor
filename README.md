@@ -1,22 +1,22 @@
 [English](README.md) | [中文](README.zh-CN.md)
 # oh-my-longfor (oml)
 
-> **The declarative bootstrap & configuration manager for OpenCode.**
-> Install bun, opencode, oh-my-opencode, MCP servers, and Skills with a single command.
+> **The declarative bootstrap & configuration manager for AI development CLI tools.**
+> Install bun, your choice of AI tool (opencode, claude code, or codex cli), MCP servers, and Skills with a single command.
 
 [![Bash](https://img.shields.io/badge/Language-Bash-4EAA25.svg)](https://www.gnu.org/software/bash/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey.svg)]()
 
-`oh-my-longfor` (oml) is a zero-dependency shell tool that bootstraps a complete AI development environment. It seamlessly provisions OpenCode, the oh-my-opencode plugin, and dynamically configures Model Context Protocol (MCP) servers and reusable agent skills based on a declarative `manifest.yaml`.
+`oh-my-longfor` (oml) is a zero-dependency shell tool that bootstraps a complete AI development environment. It seamlessly provisions your choice of CLI (`opencode`, `claude`, or `codex`), and dynamically configures Model Context Protocol (MCP) servers and reusable agent skills based on a declarative `manifest.yaml` so they are immediately available to the agent you chose.
 
 ---
 
 ## 🚀 Features
 
 - **Zero-Dependency Bootstrap**: Written in pure `bash`. Only requires `curl` and `git` to run.
-- **Toolchain Management**: Automatically installs `bun`, `opencode` (via official binaries), and the `oh-my-opencode` plugin if they are missing. Supports **macOS** (Intel & Apple Silicon) and **Linux** (x86\_64 & arm64). Windows is not supported.
-- **Declarative Configuration**: Define your MCP servers, Skill repositories, and required API keys in a simple `manifest.yaml`.
+- **Toolchain Management**: Automatically installs `bun`, and guides you to install either `opencode`, `claude`, or `codex`. Supports **macOS** (Intel & Apple Silicon) and **Linux** (x86\_64 & arm64). Windows is not supported.
+- **Declarative Configuration**: Define your MCP servers, Skill repositories, and required API keys in a simple `manifest.yaml`. `oml` automatically translates these to the right format (`JSON` or `TOML`) for your selected AI tool.
 - **Vanilla or Team Modes**: Use it standalone as a quick installer, or point it to a remote Git repository to sync configurations across multiple machines or a development team.
 - **Local Overrides**: Add personal MCP servers or skills without altering the shared configuration.
 - **Safe Operations**: Automatic backups before every update. Easy rollbacks.
@@ -30,7 +30,7 @@ You can install `oh-my-longfor` in one of two modes:
 
 ### Mode 1: Vanilla Installation (Standalone)
 
-Perfect if you just want to quickly install the `opencode` toolchain and set up a clean, local configuration framework. No remote configuration is pulled.
+Perfect if you just want to quickly install a fresh AI toolchain and set up a clean, local configuration framework. No remote configuration is pulled. You will be prompted to select which CLI you want to install.
 
 ```bash
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
@@ -45,7 +45,7 @@ If you have a remote Git repository containing a `manifest.yaml` file (e.g., tea
 ```bash
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
   curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
-  | bash -s -- https://gitlab.com/your-org/team-config
+  | bash -s -- https://github.com/todrfu/oh-my-longfor-config-example
 
 # or local config
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
@@ -67,7 +67,7 @@ cd oh-my-longfor
 ./install.sh
 
 # Or with a team config URL
-./install.sh https://gitlab.com/your-org/team-config
+./install.sh https://github.com/todrfu/oh-my-longfor-config-example
 
 # Or with a local manifest file
 ./install.sh ./my-local-config/manifest.yaml
@@ -253,10 +253,12 @@ oml rollback 2026-02-25-143022
 # Symlinks created automatically for skill discovery:
 ~/.claude/skills/
 ~/.config/opencode/skills/
+~/.codex/skills/
 ```
 
-- OpenCode resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json` (injected into shell rc).
-- Skills are symlinked to standard locations to ensure they are discovered by both OpenCode's native loader and Claude Code.
+- **OpenCode** resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json` (injected into shell rc).
+- **Claude Code** and **Codex CLI** resolve their configs via symlinks (`~/.claude.json` and `~/.codex/config.toml`).
+- **Skills** are symlinked to standard locations to ensure they are discovered by all supported agents out-of-the-box.
 
 ---
 

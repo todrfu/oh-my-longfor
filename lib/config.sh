@@ -219,11 +219,165 @@ BUNEOF
   oml_success "Generated oh-my-opencode.jsonc"
 }
 
-# Generate all configs in one call: opencode.json + oh-my-opencode.jsonc + env template
+# Generate ~/.oml/config/claude.json and symlink to ~/.claude.json
+# Usage: oml_generate_claude_config <manifest-path>
+oml_generate_claude_config() {
+  local manifest_file="$1"
+  local config_dir="${OML_HOME}/config"
+  local output_file="${config_dir}/claude.json"
+
+  if ! command -v bun >/dev/null 2>&1; then return 1; fi
+  if [ ! -f "$manifest_file" ]; then return 1; fi
+
+  mkdir -p "$config_dir"
+  local override_mcps_file="${OML_HOME}/overrides/mcps.yaml"
+  oml_info "Generating claude.json from manifest..."
+
+  local tmp_manifest tmp_override
+  tmp_manifest=$(mktemp) tmp_override=$(mktemp)
+  bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null || true
+  if [ -f "$override_mcps_file" ]; then
+    bunx -y js-yaml "$override_mcps_file" > "$tmp_override" 2>/dev/null || true
+  else
+    echo "{}" > "$tmp_override"
+  fi
+
+  bun - "$tmp_manifest" "$tmp_override" "$output_file" << 'BUNEOF'
+const fs = require('fs');
+let manifest = {}; try { manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch (e) {}
+let override = {}; try { override = JSON.parse(fs.readFileSync(process.argv[3], 'utf8')); } catch (e) {}
+
+const mcpServers = {};
+const allMcps = [...(manifest.mcps || []), ...(override.mcps || [])];
+
+for (const mcp of allMcps) {
+  if (!mcp.name) continue;
+  if (mcp.enabled === false) {
+    delete mcpServers[mcp.name];
+    continue;
+  }
+  
+  const entry = {};
+  if (mcp.type === 'local' || mcp.command) {
+    const parts = (mcp.command || '').trim().split(/\s+/);
+    entry.command = parts[0];
+    entry.args = parts.slice(1);
+    if (mcp.environment) entry.env = mcp.environment;
+  } else {
+    // Claude might not fully support remote HTTP MCPs in the same json struct,
+    // but we map it gracefully if possible.
+    continue; // skipping URL based for now as Claude CLI focuses on local stdio
+  }
+  mcpServers[mcp.name] = entry;
+}
+
+const config = Object.keys(mcpServers).length > 0 ? { mcpServers } : {};
+fs.writeFileSync(process.argv[4], JSON.stringify(config, null, 2) + '\n');
+console.log(`Generated ${process.argv[4]} (Claude MCPs: ${Object.keys(mcpServers).length})`);
+BUNEOF
+
+  rm -f "$tmp_manifest" "$tmp_override"
+  
+  # create symlink for claude
+  local target_link="$HOME/.claude.json"
+  if [ ! -L "$target_link" ] || [ "$(readlink "$target_link")" != "$output_file" ]; then
+    rm -f "$target_link"
+    ln -s "$output_file" "$target_link"
+    oml_success "Symlinked ~/.claude.json -> $output_file"
+  fi
+}
+
+# Generate ~/.oml/config/codex.toml and symlink to ~/.codex/config.toml
+# Usage: oml_generate_codex_config <manifest-path>
+oml_generate_codex_config() {
+  local manifest_file="$1"
+  local config_dir="${OML_HOME}/config"
+  local output_file="${config_dir}/codex.toml"
+
+  if ! command -v bun >/dev/null 2>&1; then return 1; fi
+  if [ ! -f "$manifest_file" ]; then return 1; fi
+
+  mkdir -p "$config_dir"
+  local override_mcps_file="${OML_HOME}/overrides/mcps.yaml"
+  oml_info "Generating codex.toml from manifest..."
+
+  local tmp_manifest tmp_override
+  tmp_manifest=$(mktemp) tmp_override=$(mktemp)
+  bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null || true
+  if [ -f "$override_mcps_file" ]; then
+    bunx -y js-yaml "$override_mcps_file" > "$tmp_override" 2>/dev/null || true
+  else
+    echo "{}" > "$tmp_override"
+  fi
+
+  bun - "$tmp_manifest" "$tmp_override" "$output_file" << 'BUNEOF'
+const fs = require('fs');
+let manifest = {}; try { manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch (e) {}
+let override = {}; try { override = JSON.parse(fs.readFileSync(process.argv[3], 'utf8')); } catch (e) {}
+
+const mcpServers = {};
+const allMcps = [...(manifest.mcps || []), ...(override.mcps || [])];
+
+for (const mcp of allMcps) {
+  if (!mcp.name) continue;
+  if (mcp.enabled === false) {
+    delete mcpServers[mcp.name];
+    continue;
+  }
+  
+  const entry = {};
+  if (mcp.type === 'local' || mcp.command) {
+    entry.command = mcp.command; // Codex usually expects string
+    if (mcp.environment) entry.env = mcp.environment;
+  } else if (mcp.url) {
+    entry.url = mcp.url;
+  }
+  mcpServers[mcp.name] = entry;
+}
+
+// Generate TOML string manually since bun doesn't bundle a toml writer
+let tomlLines = ['# oh-my-longfor generated codex config\n'];
+for (const [name, srv] of Object.entries(mcpServers)) {
+  tomlLines.push(`[mcp_servers.${name}]`);
+  if (srv.command) {
+    // Escape quotes in command
+    tomlLines.push(`command = "${srv.command.replace(/"/g, '\\"')}"`);
+  } else if (srv.url) {
+    tomlLines.push(`url = "${srv.url.replace(/"/g, '\\"')}"`);
+  }
+  if (srv.env && Object.keys(srv.env).length > 0) {
+    tomlLines.push('env = {');
+    const envEntries = Object.entries(srv.env).map(([k,v]) => `  "${k}" = "${v}"`);
+    tomlLines.push(envEntries.join(',\n'));
+    tomlLines.push('}');
+  }
+  tomlLines.push('');
+}
+
+fs.writeFileSync(process.argv[4], tomlLines.join('\n'));
+console.log(`Generated ${process.argv[4]} (Codex MCPs: ${Object.keys(mcpServers).length})`);
+BUNEOF
+
+  rm -f "$tmp_manifest" "$tmp_override"
+  
+  # create symlink for codex
+  local codex_dir="$HOME/.codex"
+  mkdir -p "$codex_dir"
+  local target_link="$codex_dir/config.toml"
+  if [ ! -L "$target_link" ] || [ "$(readlink "$target_link")" != "$output_file" ]; then
+    rm -f "$target_link"
+    ln -s "$output_file" "$target_link"
+    oml_success "Symlinked ~/.codex/config.toml -> $output_file"
+  fi
+}
+
+# Generate all configs in one call: opencode.json + oh-my-opencode.jsonc + env template + claude + codex
 # Usage: oml_generate_all_configs <manifest-path>
 oml_generate_all_configs() {
   local manifest_file="$1"
   oml_generate_opencode_config "$manifest_file"
   oml_generate_omo_config "$manifest_file"
+  oml_generate_claude_config "$manifest_file"
+  oml_generate_codex_config "$manifest_file"
   oml_generate_env_template "$manifest_file"
 }

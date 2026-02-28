@@ -2,22 +2,22 @@
 
 # oh-my-longfor (oml)
 
-> **OpenCode 的声明式引导与配置管理工具。**
-> 只需一条命令，即可安装 bun、opencode、oh-my-opencode、MCP 服务器和 Skills。
+> **AI 开发 CLI 工具的声明式引导与配置管理工具。**
+> 只需一条命令，即可安装 bun、您选择的 AI 工具（opencode、claude code 或 codex cli）、MCP 服务器和 Skills。
 
 [![Bash](https://img.shields.io/badge/Language-Bash-4EAA25.svg)](https://www.gnu.org/software/bash/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey.svg)]()
 
-`oh-my-longfor`（oml）是一个零依赖的 Shell 工具，用于引导完整的 AI 开发环境。它可以一键安装 OpenCode、oh-my-opencode 插件，并根据声明式的 `manifest.yaml` 动态配置 Model Context Protocol (MCP) 服务器和可复用的 Agent Skills。
+`oh-my-longfor`（oml）是一个零依赖的 Shell 工具，用于引导完整的 AI 开发环境。它可以一键配置您选择的开发工具 (`opencode`, `claude` 或 `codex`)，并根据声明式的 `manifest.yaml` 动态配置 Model Context Protocol (MCP) 服务器和可复用的 Agent Skills，并自动适配不同工具的配置格式。
 
 ---
 
 ## 🚀 特性
 
 - **零依赖引导**：纯 `bash` 编写，仅需 `curl` 和 `git` 即可运行。
-- **工具链管理**：自动检测并安装缺失的 `bun`、`opencode`（官方二进制）和 `oh-my-opencode` 插件。支持 **macOS**（Intel & Apple Silicon）和 **Linux**（x86\_64 & arm64）。不支持 Windows。
-- **声明式配置**：在简洁的 `manifest.yaml` 中定义 MCP 服务器、Skill 仓库和所需的 API Key。
+- **工具链管理**：自动检测并安装缺失的 `bun` 以及引导提示安装 `opencode`、`claude` Code CLI 或 `codex` CLI。支持 **macOS**（Intel & Apple Silicon）和 **Linux**（x86\_64 & arm64）。不支持 Windows。
+- **声明式配置**：在简洁的 `manifest.yaml` 中定义 MCP 服务器、Skill 仓库和所需的 API Key。`oml` 会自动将其转换为各个工具识别的格式（`JSON` 或 `TOML`）。
 - **纯净模式或团队模式**：既可作为快速安装工具独立使用，也可指向远程 Git 仓库以在多台机器或开发团队间同步配置。
 - **本地覆盖**：无需修改共享配置，即可添加个人的 MCP 服务器或 Skills。
 - **安全操作**：每次更新前自动备份，支持轻松回滚。
@@ -31,7 +31,7 @@
 
 ### 模式一：纯净安装（独立使用）
 
-如果你只是想快速安装 `opencode` 工具链并搭建一个干净的本地配置框架，不需要拉取任何远程配置：
+如果你只是想快速安装全新的 AI 工具链并搭建一个干净的本地配置框架，不需要拉取任何远程配置。安装期间终端会提示你选择一款需要安装的开发工具。
 
 ```bash
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
@@ -46,7 +46,7 @@ OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
 ```bash
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
   curl -fsSL https://raw.githubusercontent.com/todrfu/oh-my-longfor/main/install.sh \
-  | bash -s -- https://gitlab.com/your-org/team-config
+  | bash -s -- https://github.com/todrfu/oh-my-longfor-config-example
 
 # or local config
 OML_SELF_REPO=https://github.com/todrfu/oh-my-longfor \
@@ -68,7 +68,7 @@ cd oh-my-longfor
 ./install.sh
 
 # 或指定团队配置仓库
-./install.sh https://gitlab.com/your-org/team-config
+./install.sh https://github.com/todrfu/oh-my-longfor-config-example
 
 # 或指定本地 manifest 文件
 ./install.sh ./my-local-config/manifest.yaml
@@ -253,10 +253,12 @@ oml rollback 2026-02-25-143022
 # 自动创建的 Skill 软链接：
 ~/.claude/skills/
 ~/.config/opencode/skills/
+~/.codex/skills/
 ```
 
-- OpenCode 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置（通过 Shell rc 注入）。
-- Skills 被软链接到标准位置，以确保 OpenCode 原生加载器和 Claude Code 都能发现它们。
+- **OpenCode** 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置（通过 Shell rc 注入）。
+- **Claude Code** 和 **Codex CLI** 通过软连接自动解析（如 `~/.claude.json` 和 `~/.codex/config.toml`）。
+- **Skills** 被软链接到多个标准位置，以确保不同 AI Agent 都能开箱即用地发现它们。
 
 ---
 

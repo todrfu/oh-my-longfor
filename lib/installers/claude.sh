@@ -30,22 +30,12 @@ _ensure_claude() {
     oml_info "Installing claude code cli via official installer..."
     curl -fsSL https://claude.ai/install.sh | bash
     
-    # The installer puts 'claude' in ~/.local/bin, but doesn't update shell RC files.
-    # Update current session PATH.
+    # The installer puts 'claude' in ~/.local/bin. 
+    # We update the current session PATH so the installer can verify the installation.
     export PATH="$HOME/.local/bin:$PATH"
     
-    # Persistently add ~/.local/bin to shell rc files using oml helper
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
-      if [ -f "$rc" ]; then
-        _add_to_path "$HOME/.local/bin" "$rc" "claude PATH"
-      fi
-    done
-
-    # Fallback if no rc files exist yet
-    if [ ! -f "$HOME/.bashrc" ] && [ ! -f "$HOME/.zshrc" ]; then
-      touch "$HOME/.bashrc"
-      _add_to_path "$HOME/.local/bin" "$HOME/.bashrc" "claude PATH"
-    fi
+    # Persistent shell RC modification is now done manually by the user 
+    # as instructed in the final summary.
 
     if ! command -v claude >/dev/null 2>&1; then
       oml_warn "Claude code cli was installed but 'claude' command is not in the current shell context."

@@ -173,32 +173,10 @@ _add_to_path() {
   local rc_file="$2"
   local custom_marker="${3:-}"
   local marker_text="${custom_marker:-PATH}"
-  local marker="# oml: ${marker_text}"
-
-  if [ ! -f "$rc_file" ]; then return 0; fi
-
-  # Skip if exact path already configured
-  if grep -qF "export PATH=\"${bin_dir}:" "$rc_file" 2>/dev/null; then
-    oml_info "${marker_text} already configured in $rc_file"
-    return 0
-  fi
-
-  # Remove stale oml PATH entry (different OML_HOME)
-  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
-    local tmpfile
-    tmpfile="$(mktemp)"
-    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
-    cp "$tmpfile" "$rc_file"
-    rm -f "$tmpfile"
-    oml_info "Updating ${marker_text} in $rc_file"
-  fi
-
-  cat >>"$rc_file" <<EOF
-
-# oml: ${marker_text} — added by oh-my-longfor installer
-export PATH="${bin_dir}:\$PATH"
-EOF
-  oml_success "Added $bin_dir to PATH in $rc_file"
+  
+  # Automatic injection disabled per user request
+  oml_info "[Manual Action Required] Please add ${bin_dir} to your PATH in ${rc_file}"
+  return 0
 }
 
 # ── Idempotent env var addition ───────────────────────────────────────────────
@@ -206,64 +184,20 @@ _add_env_var() {
   local var_name="$1"
   local var_value="$2"
   local rc_file="$3"
-  local marker="# oml: ${var_name}"
-
-  if [ ! -f "$rc_file" ]; then return 0; fi
-
-  # Skip if exact value already configured
-  if grep -qF "export ${var_name}=\"${var_value}\"" "$rc_file" 2>/dev/null; then
-    oml_info "$var_name already configured in $rc_file"
-    return 0
-  fi
-
-  # Remove stale oml entry (different value)
-  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
-    local tmpfile
-    tmpfile="$(mktemp)"
-    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
-    cp "$tmpfile" "$rc_file"
-    rm -f "$tmpfile"
-    oml_info "Updating $var_name in $rc_file"
-  fi
-
-  cat >>"$rc_file" <<EOF
-
-# oml: ${var_name} — added by oh-my-longfor installer
-export ${var_name}="${var_value}"
-EOF
-  oml_success "Set $var_name in $rc_file"
+  
+  # Automatic injection disabled per user request
+  oml_info "[Manual Action Required] Please set ${var_name}=\"${var_value}\" in ${rc_file}"
+  return 0
 }
 
 # ── Idempotent env-file source line addition ──────────────────────────────────
 _add_source_line() {
   local source_file="$1"
   local rc_file="$2"
-  local marker="# oml: env"
-
-  if [ ! -f "$rc_file" ]; then return 0; fi
-
-  # Skip if exact source_file path already referenced
-  if grep -qF "$source_file" "$rc_file" 2>/dev/null; then
-    oml_info "Env source already configured in $rc_file"
-    return 0
-  fi
-
-  # Remove stale oml env source entry (different OML_HOME)
-  if grep -qF "$marker" "$rc_file" 2>/dev/null; then
-    local tmpfile
-    tmpfile="$(mktemp)"
-    awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
-    cp "$tmpfile" "$rc_file"
-    rm -f "$tmpfile"
-    oml_info "Updating env source in $rc_file"
-  fi
-
-  cat >>"$rc_file" <<EOF
-
-# oml: env — added by oh-my-longfor installer
-[ -f "${source_file}" ] && source "${source_file}"
-EOF
-  oml_success "Added env source to $rc_file"
+  
+  # Automatic injection disabled per user request
+  oml_info "[Manual Action Required] Please source ${source_file} in ${rc_file}"
+  return 0
 }
 
 # ── Configure shell rc files ──────────────────────────────────────────────────
@@ -388,26 +322,42 @@ BUNEOF
   printf "\n"
   printf '%b\n' "┌─ ${RED}Next Steps${NC} ──────────────────────────────────────────────────────┐"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}1. ⚡ Restart your terminal or run:${NC}"
-  printf '%b\n' "│       ${RED}source ${_rc_file}${NC}"
+  printf '%b\n' "│  ${GREEN}1. ⚙️  Update your shell configuration manually:${NC}"
+  printf '%b\n' "│     Add the following to your ${RED}${_rc_file}${NC}:"
   printf '%b\n' "│"
-  printf '%b\n' "│  ${GREEN}2. Fill in your API keys${NC}"
-  printf '%b\n' "│       vim ${OML_ENV_DIR}/.env.oml"
+  printf '%b\n' "│     # oh-my-longfor environment"
+  printf '%b\n' "│     export PATH=\"${OML_BIN_DIR}:\$PATH\""
+  
+  if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
+    printf '%b\n' "│     export PATH=\"\$HOME/.opencode/bin:\$PATH\""
+    printf '%b\n' "│     export OPENCODE_CONFIG=\"${OML_CONFIG_DIR}/opencode.json\""
+  elif [ "${OML_TOOL}" = "claude" ]; then
+    printf '%b\n' "│     export PATH=\"\$HOME/.local/bin:\$PATH\""
+  elif [ "${OML_TOOL}" = "codex" ]; then
+    printf '%b\n' "│     # Ensure your bun bin dir is in path if installed via bun"
+    printf '%b\n' "│     export PATH=\"\$HOME/.bun/bin:\$PATH\""
+  fi
+  
+  printf '%b\n' "│     [ -f \"${OML_ENV_DIR}/.env.oml\" ] && source \"${OML_ENV_DIR}/.env.oml\""
   printf '%b\n' "│"
-  printf '%b\n' "│       ${GRAY}After that, run: source ${_rc_file}${NC}"
+  printf '%b\n' "│  ${GREEN}2. Fill in your API keys in:${NC}"
+  printf '%b\n' "│     ${OML_ENV_DIR}/.env.oml"
+  printf '%b\n' "│"
+  printf '%b\n' "│  ${GREEN}3. Restart your terminal or run:${NC}"
+  printf '%b\n' "│     source ${_rc_file}"
   printf '%b\n' "│"
   
   if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
-    printf '%b\n' "│  ${GREEN}3. Configure oh-my-opencode AI subscriptions (optional)${NC}"
-    printf '%b\n' "│       bunx oh-my-opencode install"
+    printf '%b\n' "│  ${GREEN}4. Configure oh-my-opencode AI subscriptions (optional)${NC}"
+    printf '%b\n' "│     bunx oh-my-opencode install"
     printf '%b\n' "│"
-    printf '%b\n' "│  ${GREEN}4. Verify everything works (optional)${NC}"
+    printf '%b\n' "│  ${GREEN}5. Verify everything works (optional)${NC}"
   else
-    printf '%b\n' "│  ${GREEN}3. Verify everything works (optional)${NC}"
+    printf '%b\n' "│  ${GREEN}4. Verify everything works (optional)${NC}"
   fi
   
-  printf '%b\n' "│       oml doctor"
-  printf '%b\n' "│       oml status"
+  printf '%b\n' "│     oml doctor"
+  printf '%b\n' "│     oml status"
   printf '%b\n' "│"
   printf '%b\n' "│ ─────────────────────────────────────────────────────────────────"
   printf '%b\n' "│"

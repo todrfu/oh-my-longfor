@@ -11,28 +11,8 @@ oml_error()   { printf '\033[1;31m==> Error:\033[0m %b\n' "$1" >&2; }
 # ── Remove RC Injections ──────────────────────────────────────────────────────
 _remove_rc_injections() {
   local rc_file="$1"
-  if [ ! -f "$rc_file" ]; then return 0; fi
-
-  oml_info "Cleaning up $rc_file..."
-  
-  local tmpfile
-  tmpfile="$(mktemp)"
-
-  awk '/# oml: / { skip=1; next } skip > 0 { skip--; next } { print }' "$rc_file" > "$tmpfile"
-
-  # Remove specific source lines that might have lost their marker
-  local tmpfile2
-  tmpfile2="$(mktemp)"
-  grep -v -E "source .*env\.oml" "$tmpfile" | grep -v "OPENCODE_CONFIG=" > "$tmpfile2" || true
-  
-  if cmp -s "$rc_file" "$tmpfile2"; then
-    rm -f "$tmpfile" "$tmpfile2"
-    return 0
-  fi
-
-  cp "$tmpfile2" "$rc_file"
-  rm -f "$tmpfile" "$tmpfile2"
-  oml_success "Cleaned $rc_file"
+  oml_info "[Manual Action Required] Please remove oh-my-longfor related PATH and environment variables from ${rc_file}"
+  return 0
 }
 
 # ── Main Uninstallation ───────────────────────────────────────────────────────
@@ -81,7 +61,14 @@ main() {
   local current_shell
   current_shell="$(basename "$SHELL" 2>/dev/null || echo "bash")"
   
-  oml_warn "Please restart your terminal or run: exec \"$current_shell\" -l"
+  printf "\n"
+  oml_warn "IMPORTANT: Manual cleanup required!"
+  oml_warn "Please open your shell configuration (e.g., ~/.zshrc or ~/.bashrc) and remove lines containing:"
+  oml_warn "  - oh-my-longfor"
+  oml_warn "  - opencode"
+  oml_warn "  - ~/.oml"
+  printf "\n"
+  oml_info "After that, restart your terminal or run: exec \"$current_shell\" -l"
 }
 
 main "$@"

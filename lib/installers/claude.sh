@@ -37,14 +37,14 @@ _ensure_claude() {
     # Persistently add ~/.local/bin to shell rc files using oml helper
     for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
       if [ -f "$rc" ]; then
-        _add_to_path "$HOME/.local/bin" "$rc"
+        _add_to_path "$HOME/.local/bin" "$rc" "claude PATH"
       fi
     done
 
     # Fallback if no rc files exist yet
     if [ ! -f "$HOME/.bashrc" ] && [ ! -f "$HOME/.zshrc" ]; then
       touch "$HOME/.bashrc"
-      _add_to_path "$HOME/.local/bin" "$HOME/.bashrc"
+      _add_to_path "$HOME/.local/bin" "$HOME/.bashrc" "claude PATH"
     fi
 
     if ! command -v claude >/dev/null 2>&1; then

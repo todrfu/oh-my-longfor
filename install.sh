@@ -171,13 +171,15 @@ _ensure_bun() {
 _add_to_path() {
   local bin_dir="$1"
   local rc_file="$2"
-  local marker="# oml: PATH"
+  local custom_marker="${3:-}"
+  local marker_text="${custom_marker:-PATH}"
+  local marker="# oml: ${marker_text}"
 
   if [ ! -f "$rc_file" ]; then return 0; fi
 
   # Skip if exact path already configured
   if grep -qF "export PATH=\"${bin_dir}:" "$rc_file" 2>/dev/null; then
-    oml_info "PATH already configured in $rc_file"
+    oml_info "${marker_text} already configured in $rc_file"
     return 0
   fi
 
@@ -188,12 +190,12 @@ _add_to_path() {
     awk -v m="$marker" 'BEGIN{buf=""} index($0,m){skip=1; if(buf!="" && buf!~/^[[:space:]]*$/)print buf; buf=""; next} skip>0{skip--;next} {if(buf!="")print buf;buf=$0} END{if(buf!="")print buf}' "$rc_file" > "$tmpfile"
     cp "$tmpfile" "$rc_file"
     rm -f "$tmpfile"
-    oml_info "Updating PATH in $rc_file"
+    oml_info "Updating ${marker_text} in $rc_file"
   fi
 
   cat >>"$rc_file" <<EOF
 
-# oml: PATH — added by oh-my-longfor installer
+# oml: ${marker_text} — added by oh-my-longfor installer
 export PATH="${bin_dir}:\$PATH"
 EOF
   oml_success "Added $bin_dir to PATH in $rc_file"

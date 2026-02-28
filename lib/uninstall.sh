@@ -8,25 +8,11 @@ oml_success() { printf '\033[1;32m==>\033[0m %b\n' "$1"; }
 oml_warn()    { printf '\033[1;33m==>\033[0m %b\n' "$1"; }
 oml_error()   { printf '\033[1;31m==> Error:\033[0m %b\n' "$1" >&2; }
 
-# ── Remove RC Injections ──────────────────────────────────────────────────────
-_remove_rc_injections() {
-  local rc_file="$1"
-  oml_info "[Manual Action Required] Please remove oh-my-longfor related PATH and environment variables from ${rc_file}"
-  return 0
-}
-
 # ── Main Uninstallation ───────────────────────────────────────────────────────
 main() {
   oml_info "Starting uninstallation of oh-my-longfor, OpenCode, and oh-my-opencode..."
 
-  # 1. Clean RC files
-  for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
-    if [ -f "$rc" ]; then
-      _remove_rc_injections "$rc"
-    fi
-  done
-
-  # 2. Remove OpenCode binaries and config
+  # 1. Remove OpenCode binaries and config
   local opencode_dirs=(
     "$HOME/.opencode"
     "$HOME/.config/opencode"
@@ -39,7 +25,7 @@ main() {
     fi
   done
 
-  # 3. Remove oh-my-opencode package
+  # 2. Remove oh-my-opencode package
   if command -v bun >/dev/null 2>&1; then
     oml_info "Removing oh-my-opencode via bun..."
     bun remove -g oh-my-opencode >/dev/null 2>&1 || true
@@ -48,7 +34,7 @@ main() {
     rm -f "$HOME/.bun/bin/oh-my-opencode"
   fi
 
-  # 4. Remove OML Home
+  # 3. Remove OML Home
   local oml_home="${OML_HOME:-$HOME/.oml}"
   if [ -d "$oml_home" ]; then
     oml_info "Removing $oml_home..."

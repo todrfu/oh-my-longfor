@@ -20,7 +20,7 @@
 - **Vanilla or Team Modes**: Use it standalone as a quick installer, or point it to a remote Git repository to sync configurations across multiple machines or a development team.
 - **Local Overrides**: Add personal MCP servers or skills without altering the shared configuration.
 - **Safe Operations**: Automatic backups before every update. Easy rollbacks.
-- **Idempotent Shell Configuration**: Automatically injects `OPENCODE_CONFIG` and `$PATH` into your `.zshrc` / `.bashrc` without duplicate entries.
+- **Environment Configuration**: Provides a clear guide to manually add `OPENCODE_CONFIG` and `$PATH` into your `.zshrc` / `.bashrc` at the end of installation.
 
 ---
 
@@ -76,9 +76,7 @@ cd oh-my-longfor
 The installer automatically detects that it's running from a local directory and uses the `lib/` and `bin/oml` from the current directory.
 
 
-### Post-Installation Steps
-
-After the installation finishes, the script will **automatically reload your shell** (via `exec "$SHELL" -l`), so your new configuration is active immediately.
+After the installation finishes, follow the **Next Steps** guide to manually add the required environment variables to your shell configuration file (e.g., `~/.zshrc`).
 
 Next, you may need to:
 
@@ -256,7 +254,7 @@ oml rollback 2026-02-25-143022
 ~/.codex/skills/
 ```
 
-- **OpenCode** resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json` (injected into shell rc).
+- **OpenCode** resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json`.
 - **Claude Code** and **Codex CLI** resolve their configs via symlinks (`~/.claude.json` and `~/.codex/config.toml`).
 - **Skills** are symlinked to standard locations to ensure they are discovered by all supported agents out-of-the-box.
 
@@ -265,7 +263,7 @@ oml rollback 2026-02-25-143022
 ## ❓ FAQ
 
 **Q: How do I manage API Keys securely?**
-Run `oml env` to see required keys. The installer automatically copies the template to `~/.oml/env/.env.oml` and configures your shell to source it. You just need to edit it:
+Run `oml env` to see required keys. The installer automatically copies the template to `~/.oml/env/.env.oml`. You need to manually source this file in your shell RC and then edit it:
 ```bash
 vim ~/.oml/env/.env.oml
 ```
@@ -273,8 +271,7 @@ vim ~/.oml/env/.env.oml
 **Q: `curl | bash` fails with "Could not clone oml repo"?**
 Ensure you prefix the command with `OML_SELF_REPO` pointing to the script's repository URL.
 
-**Q: How do I completely uninstall?**
-You can use the built-in command to cleanly remove `oh-my-longfor`, `opencode`, and `oh-my-opencode` from your system (including RC injections and global packages):
+You can use the built-in command to cleanly remove `oh-my-longfor`, `opencode`, and `oh-my-opencode` from your system. (Note: You will need to manually remove the environment variables from your shell RC as prompted):
 ```bash
 oml uninstall
 ```

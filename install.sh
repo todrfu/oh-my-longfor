@@ -167,62 +167,6 @@ _ensure_bun() {
   oml_success "bun installed."
 }
 
-# ── Idempotent PATH addition ──────────────────────────────────────────────────
-_add_to_path() {
-  local bin_dir="$1"
-  local rc_file="$2"
-  local custom_marker="${3:-}"
-  local marker_text="${custom_marker:-PATH}"
-  
-  # Automatic injection disabled per user request
-  oml_info "[Manual Action Required] Please add ${bin_dir} to your PATH in ${rc_file}"
-  return 0
-}
-
-# ── Idempotent env var addition ───────────────────────────────────────────────
-_add_env_var() {
-  local var_name="$1"
-  local var_value="$2"
-  local rc_file="$3"
-  
-  # Automatic injection disabled per user request
-  oml_info "[Manual Action Required] Please set ${var_name}=\"${var_value}\" in ${rc_file}"
-  return 0
-}
-
-# ── Idempotent env-file source line addition ──────────────────────────────────
-_add_source_line() {
-  local source_file="$1"
-  local rc_file="$2"
-  
-  # Automatic injection disabled per user request
-  oml_info "[Manual Action Required] Please source ${source_file} in ${rc_file}"
-  return 0
-}
-
-# ── Configure shell rc files ──────────────────────────────────────────────────
-_configure_shell() {
-  local bin_dir="$1"
-  local config_file="$2"
-  local env_file="${OML_ENV_DIR}/.env.oml"
-
-  for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
-    if [ -f "$rc" ]; then
-      _add_to_path "$bin_dir" "$rc"
-      _add_env_var "OPENCODE_CONFIG" "$config_file" "$rc"
-      _add_source_line "$env_file" "$rc"
-    fi
-  done
-
-  # If no rc file exists yet, create .bashrc as fallback
-  if [ ! -f "$HOME/.bashrc" ] && [ ! -f "$HOME/.zshrc" ]; then
-    touch "$HOME/.bashrc"
-    _add_to_path "$bin_dir" "$HOME/.bashrc"
-    _add_env_var "OPENCODE_CONFIG" "$config_file" "$HOME/.bashrc"
-    _add_source_line "$env_file" "$HOME/.bashrc"
-  fi
-}
-
 # ── Install oml bin + lib ─────────────────────────────────────────────────────
 _install_oml_bin() {
   mkdir -p "$OML_BIN_DIR"
@@ -558,12 +502,7 @@ EOF
   # ── Step 10: Install oml bin ─────────────────────────────────────────────────
   _install_oml_bin || oml_warn "Failed to install oml binary (non-fatal)"
 
-  # ── Step 11: Configure shell ─────────────────────────────────────────────────
-  oml_info "Configuring shell..."
-  _configure_shell "$OML_BIN_DIR" "${OML_CONFIG_DIR}/opencode.json" \
-    || oml_warn "Failed to configure shell rc files (non-fatal)"
-
-  # ── Step 12: Release lock ────────────────────────────────────────────
+  # ── Step 11: Release lock ────────────────────────────────────────────
   oml_lock_release
 
   # ── Step 13: Clean up bootstrap cache ─────────────────────────────────

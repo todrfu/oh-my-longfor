@@ -21,7 +21,7 @@
 - **纯净模式或团队模式**：既可作为快速安装工具独立使用，也可指向远程 Git 仓库以在多台机器或开发团队间同步配置。
 - **本地覆盖**：无需修改共享配置，即可添加个人的 MCP 服务器或 Skills。
 - **安全操作**：每次更新前自动备份，支持轻松回滚。
-- **幂等 Shell 配置**：自动将 `OPENCODE_CONFIG` 和 `$PATH` 注入 `.zshrc` / `.bashrc`，不会产生重复条目。
+- **环境配置指引**：在安装结束时提供详细的指引，帮助用户手动将 `OPENCODE_CONFIG` 和 `$PATH` 注入 `.zshrc` / `.bashrc`。
 
 ---
 
@@ -76,9 +76,7 @@ cd oh-my-longfor
 
 安装器会自动检测当前是本地目录运行，并使用当前目录下的 `lib/` 和 `bin/oml`。
 
-### 安装后步骤
-
-安装完成后，脚本会**自动重新加载你的 Shell**（通过 `exec "$SHELL" -l`），所以新配置会立即生效。
+安装完成后，请根据终端输出的 **Next Steps** 指引，手动将所需的环境变量添加到你的 Shell 配置文件（如 `~/.zshrc`）中。
 
 接下来，你可能还需要进行以下操作：
 
@@ -256,7 +254,7 @@ oml rollback 2026-02-25-143022
 ~/.codex/skills/
 ```
 
-- **OpenCode** 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置（通过 Shell rc 注入）。
+- **OpenCode** 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置。
 - **Claude Code** 和 **Codex CLI** 通过软连接自动解析（如 `~/.claude.json` 和 `~/.codex/config.toml`）。
 - **Skills** 被软链接到多个标准位置，以确保不同 AI Agent 都能开箱即用地发现它们。
 
@@ -265,7 +263,7 @@ oml rollback 2026-02-25-143022
 ## ❓ 常见问题
 
 **Q：如何安全管理 API Key？**
-运行 `oml env` 查看所需的 Key。安装器已自动将模板复制为 `~/.oml/env/.env.oml`，并配置了你的 Shell 在启动时自动加载它。你只需编辑该文件即可：
+运行 `oml env` 查看所需的 Key。安装器已自动将该模板复制为 `~/.oml/env/.env.oml`。你需要手动在 Shell 配置中加载该文件并编辑它：
 ```bash
 vim ~/.oml/env/.env.oml
 ```
@@ -273,8 +271,7 @@ vim ~/.oml/env/.env.oml
 **Q：`curl | bash` 失败提示 "Could not clone oml repo"？**
 确保在命令前正确设置了 `OML_SELF_REPO` 环境变量，指向安装脚本所在的仓库 URL。
 
-**Q：如何完全卸载？**
-你可以直接运行内置的卸载命令，干净地从系统中移除 `oh-my-longfor`、`opencode` 和 `oh-my-opencode`（包括环境变量注入和全局包）：
+你可以直接运行内置的卸载命令，干净地从系统中移除 `oh-my-longfor`、`opencode` 和 `oh-my-opencode`。注意：你需要根据提示手动从 Shell 配置文件中移除相关的环境变量：
 ```bash
 oml uninstall
 ```

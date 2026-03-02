@@ -258,7 +258,7 @@ oml rollback 2026-02-25-143022
 ~/.codex/skills/
 ```
 
-- **OpenCode** 通过 `OPENCODE_CONFIG=~/.oml/config/opencode.json` 解析配置。
+- **OpenCode** 从 `~/.config/opencode/opencode.json` 解析配置。
 - **Claude Code** 和 **Codex CLI** 通过软连接自动解析（如 `~/.claude.json` 和 `~/.codex/config.toml`）。
 - **Skills** 被软链接到多个标准位置，以确保不同 AI Agent 都能开箱即用地发现它们。
 

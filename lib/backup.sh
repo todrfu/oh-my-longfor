@@ -25,7 +25,7 @@ oml_backup_create() {
   fi
 
   local has_files=false
-  for f in "${config_dir}/opencode.json" "${config_dir}/oh-my-opencode.jsonc" "${OML_HOME}/env/.env.template"; do
+  for f in "$HOME/.config/opencode/opencode.json" "${config_dir}/oh-my-opencode.jsonc" "${OML_HOME}/env/.env.template"; do
     if [ -f "$f" ]; then
       has_files=true
       break
@@ -39,11 +39,18 @@ oml_backup_create() {
   mkdir -p "$backup_dir"
 
   # Copy each config file if it exists
-  for f in "${config_dir}/opencode.json" "${config_dir}/oh-my-opencode.jsonc" "${OML_HOME}/env/.env.template"; do
-    if [ -f "$f" ]; then
-      cp "$f" "$backup_dir/"
-    fi
-  done
+  # 1. OpenCode config from ~/.config/opencode/
+  if [ -f "$HOME/.config/opencode/opencode.json" ]; then
+    cp "$HOME/.config/opencode/opencode.json" "$backup_dir/opencode.json"
+  fi
+  # 2. oh-my-opencode config from ~/.oml/config/
+  if [ -f "${config_dir}/oh-my-opencode.jsonc" ]; then
+    cp "${config_dir}/oh-my-opencode.jsonc" "$backup_dir/"
+  fi
+  # 3. env template
+  if [ -f "${OML_HOME}/env/.env.template" ]; then
+    cp "${OML_HOME}/env/.env.template" "$backup_dir/"
+  fi
 
   oml_info "Backup created: ${backup_dir}"
 
@@ -150,7 +157,13 @@ oml_rollback() {
     local filename
     filename="$(basename "$f")"
     case "$filename" in
-      opencode.json|oh-my-opencode.jsonc)
+      opencode.json)
+        mkdir -p "$HOME/.config/opencode"
+        cp "$f" "$HOME/.config/opencode/opencode.json"
+        oml_info "Restored: $HOME/.config/opencode/opencode.json"
+        restored=$((restored + 1))
+        ;;
+      oh-my-opencode.jsonc)
         cp "$f" "${config_dir}/${filename}"
         oml_info "Restored: ${config_dir}/${filename}"
         restored=$((restored + 1))

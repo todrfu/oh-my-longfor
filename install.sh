@@ -277,7 +277,6 @@ BUNEOF
   
   if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
     printf '%b\n' "│     export PATH=\"\$HOME/.opencode/bin:\$PATH\""
-    printf '%b\n' "│     export OPENCODE_CONFIG=\"${OML_CONFIG_DIR}/opencode.json\""
   elif [ "${OML_TOOL}" = "claude" ]; then
     printf '%b\n' "│     export PATH=\"\$HOME/.local/bin:\$PATH\""
   elif [ "${OML_TOOL}" = "codex" ]; then
@@ -310,7 +309,7 @@ BUNEOF
   printf '%b\n' "│"
   
   if [ "${OML_TOOL:-opencode}" = "opencode" ]; then
-    printf '%b\n' "│  ${BLUE}Config:${NC}       ${OML_CONFIG_DIR}/opencode.json"
+    printf '%b\n' "│  ${BLUE}Config:${NC}       ${HOME}/.config/opencode/opencode.json"
     printf '%b\n' "│  ${BLUE}Skills dirs:${NC}  ${HOME}/.config/opencode/skills/"
   elif [ "${OML_TOOL}" = "claude" ]; then
     printf '%b\n' "│  ${BLUE}Config:${NC}       ${HOME}/.claude.json"

@@ -258,7 +258,7 @@ oml rollback 2026-02-25-143022
 ~/.codex/skills/
 ```
 
-- **OpenCode** resolves the config via `OPENCODE_CONFIG=~/.oml/config/opencode.json`.
+- **OpenCode** resolves the config from `~/.config/opencode/opencode.json`.
 - **Claude Code** and **Codex CLI** resolve their configs via symlinks (`~/.claude.json` and `~/.codex/config.toml`).
 - **Skills** are symlinked to standard locations to ensure they are discovered by all supported agents out-of-the-box.
 

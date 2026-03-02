@@ -135,14 +135,15 @@ cmd_status() {
 
   # Config files
   printf "\n  Config files:\n"
-  for f in "config/opencode.json" "config/oh-my-opencode.jsonc" "env/.env.template"; do
-    local full="${OML_HOME}/${f}"
+  for f in ".config/opencode/opencode.json:$HOME/.config/opencode/opencode.json" "config/oh-my-opencode.jsonc:${OML_HOME}/config/oh-my-opencode.jsonc" "env/.env.template:${OML_HOME}/env/.env.template"; do
+    local display_path="${f%%:*}"
+    local full="${f##*:}"
     if [ -f "$full" ]; then
       local ts
       ts="$(date -r "$full" '+%Y-%m-%d %H:%M' 2>/dev/null || stat -c '%y' "$full" 2>/dev/null | cut -d. -f1 || echo "unknown")"
-      printf "  ${GREEN}✓${NC}  %-35s  (updated: %s)\n" "$f" "$ts"
+      printf "  ${GREEN}✓${NC}  %-45s  (updated: %s)\n" "$display_path" "$ts"
     else
-      printf "  ${RED}✗${NC}  %-35s  MISSING\n" "$f"
+      printf "  ${RED}✗${NC}  %-45s  MISSING\n" "$display_path"
     fi
   done
 
@@ -207,22 +208,23 @@ cmd_doctor() {
   printf "\n"
 
   # Check config files
-  for f in "config/opencode.json" "config/oh-my-opencode.jsonc"; do
-    local full="${OML_HOME}/${f}"
+  for f in ".config/opencode/opencode.json:$HOME/.config/opencode/opencode.json" "config/oh-my-opencode.jsonc:${OML_HOME}/config/oh-my-opencode.jsonc"; do
+    local display_path="${f%%:*}"
+    local full="${f##*:}"
     if [ -f "$full" ]; then
-      if [[ "$f" == *.jsonc ]]; then
-        printf "  ${GREEN}✓${NC}  ~/.oml/%s  exists (JSONC)\n" "$f"
+      if [[ "$display_path" == *"oh-my-opencode.jsonc"* ]]; then
+        printf "  ${GREEN}✓${NC}  ~/%s  exists (JSONC)\n" "$display_path"
       elif bun - << BUNEOF 2>/dev/null; then
 import { readFileSync } from 'fs';
 try { JSON.parse(readFileSync('${full}', 'utf8')); } catch(e) { process.exit(1); }
 BUNEOF
-        printf "  ${GREEN}✓${NC}  ~/.oml/%s  valid JSONC\n" "$f"
+        printf "  ${GREEN}✓${NC}  ~/%s  valid JSON\n" "$display_path"
       else
-        printf "  ${RED}✗${NC}  ~/.oml/%s  INVALID JSON  → Run: oml update\n" "$f"
+        printf "  ${RED}✗${NC}  ~/%s  INVALID JSON  → Run: oml update\n" "$display_path"
         all_pass=false
       fi
     else
-      printf "  ${RED}✗${NC}  ~/.oml/%s  missing  → Run: oml update\n" "$f"
+      printf "  ${RED}✗${NC}  ~/%s  missing  → Run: oml update\n" "$display_path"
       all_pass=false
     fi
   done

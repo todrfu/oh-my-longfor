@@ -13,12 +13,12 @@ set -euo pipefail
 # Default OML home (should be sourced from common.sh)
 OML_HOME="${OML_HOME:-$HOME/.oml}"
 
-# Generate ~/.oml/config/opencode.json from manifest + personal overrides
+# Generate ~/.config/opencode/opencode.json from manifest + personal overrides
 # Also creates symlinks in ~/.claude/skills/ and ~/.config/opencode/skills/ for skill discovery
 # Usage: oml_generate_opencode_config <manifest-path>
 oml_generate_opencode_config() {
   local manifest_file="$1"
-  local config_dir="${OML_HOME}/config"
+  local config_dir="$HOME/.config/opencode"
   local output_file="${config_dir}/opencode.json"
 
   if ! command -v bun >/dev/null 2>&1; then

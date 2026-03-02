@@ -32,7 +32,7 @@ _ensure_codex() {
     
     oml_info "Installing codex cli via bun..."
     # Note: Using codex-cli as the package name based on documentation
-    if bun install -g @openai/codex-cli; then
+    if bun install -g @openai/codex; then
       oml_success "codex cli installed."
     else
       oml_error "codex cli install failed. Please install manually."

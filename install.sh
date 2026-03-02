@@ -383,7 +383,10 @@ main() {
   local installer_script="$SCRIPT_DIR/lib/installers/${OML_TOOL}.sh"
   if [ -f "$installer_script" ]; then
     source "$installer_script"
-    _install_tool || oml_error "Failed to install $OML_TOOL"
+    _install_tool || {
+      oml_error "Failed to install $OML_TOOL"
+      exit 1
+    }
   else
     oml_error "Installer for $OML_TOOL not found at $installer_script"
     exit 1

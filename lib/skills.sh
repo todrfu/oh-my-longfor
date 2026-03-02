@@ -116,8 +116,9 @@ BUNEOF
 }
 
 # Symlink all discovered skills into standard discovery paths
-# Usage: oml_create_skill_symlinks
+# Usage: oml_create_skill_symlinks [manifest-path]
 oml_create_skill_symlinks() {
+  local manifest_file="${1:-}"
   local claude_target_dir="$HOME/.claude/skills"
   local opencode_target_dir="$HOME/.config/opencode/skills"
   local codex_target_dir="$HOME/.codex/skills"
@@ -128,6 +129,62 @@ oml_create_skill_symlinks() {
 
   # Clean existing symlinks managed by oml to prevent dead links
   oml_remove_skill_symlinks
+
+  # Parse includes/excludes from manifest if provided
+  # This creates a JSON object mapping repo names to their filter configurations
+  # Example: { "owner--repo": { "includes": ["skill-a"], "excludes": null } }
+  local filter_json="{}"
+  if [ -f "$manifest_file" ] && command -v bun >/dev/null 2>&1; then
+    local tmp_manifest
+    tmp_manifest=$(mktemp)
+    if bunx -y js-yaml "$manifest_file" > "$tmp_manifest" 2>/dev/null; then
+      local override_file="${OML_HOME}/overrides/skills.yaml"
+      local tmp_override
+      tmp_override=$(mktemp)
+      if [ -f "$override_file" ]; then
+        bunx -y js-yaml "$override_file" > "$tmp_override" 2>/dev/null || echo '{"repos":[]}' > "$tmp_override"
+      else
+        echo '{"repos":[]}' > "$tmp_override"
+      fi
+
+      filter_json=$(bun - "$tmp_manifest" "$tmp_override" << 'BUNEOF'
+const fs = require('fs');
+const path = require('path');
+let manifest = { skills: { repos: [] } };
+try { manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch(e) {}
+let override = { repos: [] };
+try { override = JSON.parse(fs.readFileSync(process.argv[3], 'utf8')); } catch(e) {}
+
+const repos = (manifest.skills && manifest.skills.repos) || [];
+const overrideRepos = override.repos || [];
+const merged = new Map();
+for (const r of repos) if (r.repo) merged.set(r.repo, r);
+for (const r of overrideRepos) if (r.repo) merged.set(r.repo, r);
+
+const filters = {};
+for (const r of merged.values()) {
+  const repoUrl = r.repo;
+  const repoBase = path.basename(repoUrl, '.git');
+  const repoOwner = path.basename(path.dirname(repoUrl));
+  const repoName = `${repoOwner}--${repoBase}`;
+  
+  // Only add filter config if includes or excludes is explicitly configured
+  const hasIncludes = r.includes && Array.isArray(r.includes) && r.includes.length > 0;
+  const hasExcludes = r.excludes && Array.isArray(r.excludes) && r.excludes.length > 0;
+  
+  if (hasIncludes || hasExcludes) {
+    filters[repoName] = {
+      includes: hasIncludes ? r.includes : null,
+      excludes: hasExcludes ? r.excludes : null
+    };
+  }
+}
+console.log(JSON.stringify(filters));
+BUNEOF
+      )
+      rm -f "$tmp_manifest" "$tmp_override"
+    fi
+  fi
 
   local count=0
 
@@ -143,6 +200,49 @@ oml_create_skill_symlinks() {
       # Extract repo_name from path (e.g. from "${OML_HOME}/repos/owner--repo/...")
       local rel_path="${skill_dir#${OML_HOME}/repos/}"
       local repo_name="${rel_path%%/*}"
+
+      # Apply includes/excludes filters if configured for this repo
+      # Filter rules:
+      # - If includes is configured: ONLY install skills in the includes list
+      # - If excludes is configured: install all EXCEPT skills in the excludes list
+      # - If neither configured: install ALL skills from the repo
+      # - includes takes precedence over excludes if both are configured
+      if command -v bun >/dev/null 2>&1 && [ "$filter_json" != "{}" ]; then
+        local should_install
+        should_install=$(bun - "$filter_json" "$repo_name" "$skill_name" << 'BUNEOF'
+const filters = JSON.parse(process.argv[2]);
+const repoName = process.argv[3];
+const skillName = process.argv[4];
+
+// Get filter config for this repo
+const f = filters[repoName];
+
+// If no filter config for this repo, install all skills
+if (!f) {
+  process.stdout.write('true');
+  process.exit(0);
+}
+
+// If includes is configured, only install skills in the includes list
+if (f.includes && Array.isArray(f.includes) && f.includes.length > 0) {
+  process.stdout.write(f.includes.includes(skillName) ? 'true' : 'false');
+  process.exit(0);
+}
+
+// If excludes is configured, install all skills except those in excludes list
+if (f.excludes && Array.isArray(f.excludes) && f.excludes.length > 0) {
+  process.stdout.write(f.excludes.includes(skillName) ? 'false' : 'true');
+  process.exit(0);
+}
+
+// No includes/excludes configured, install all skills
+process.stdout.write('true');
+BUNEOF
+        )
+        if [ "$should_install" != "true" ]; then
+          continue
+        fi
+      fi
       
       # Determine safe link name to avoid collision across repos
       local safe_skill_name="$skill_name"

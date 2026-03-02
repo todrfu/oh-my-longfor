@@ -143,6 +143,10 @@ skills:
       branch: main          # 默认：main
       subdir: "skills/"     # 默认：skills/
       auth: null            # 选项：null（公开）、token（使用 GITHUB_TOKEN）、ssh
+      # 可选：过滤要安装的技能
+      # includes: ["skill-a", "skill-b"]  # 白名单：仅安装这些技能
+      # excludes: ["skill-c"]              # 黑名单：安装除这些之外的所有技能
+      # 如果都未指定，则安装所有技能
 
 # ─── 插件 ────────────────────────────────────────────────
 # OpenCode 插件（npm 包）会自动加载

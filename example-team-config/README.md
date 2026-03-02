@@ -37,6 +37,9 @@ skills:
       branch: main                                      # Branch (default: main)
       subdir: "skills/"                                # Skills directory (default: skills/)
       auth: null                                       # null=public, ssh=SSH key, token=GITHUB_TOKEN
+      # Optional: Control which skills are installed
+      # includes: ["skill-a", "skill-b"]               # Whitelist: ONLY install these skills
+      # excludes: ["skill-c"]                          # Blacklist: Install all EXCEPT these
 ```
 
 Each skill repo should contain directories with `SKILL.md` files:
@@ -48,6 +51,35 @@ team-skills/
     └── my-skill-2/
         └── SKILL.md
 ```
+
+**Filtering Skills:**
+- Use `includes` to install ONLY specific skills (whitelist approach)
+- Use `excludes` to install all EXCEPT specific skills (blacklist approach)  
+- If both are specified, `includes` takes precedence
+- If neither is specified, ALL skills from the repo will be installed
+
+**Filter Examples:**
+
+```yaml
+# Example 1: Only install Vue ecosystem skills
+skills:
+  repos:
+    - repo: "https://github.com/your-org/frontend-skills"
+      includes: ["vue", "nuxt", "vite", "pinia"]
+
+# Example 2: Install all except deprecated skills
+    - repo: "https://github.com/your-org/backend-skills"
+      excludes: ["legacy-api", "deprecated-tool"]
+
+# Example 3: Multiple repos with different filters
+    - repo: "https://github.com/company/shared-skills"
+      includes: ["fastapi", "postgres"]  # Backend team only needs these
+```
+
+**Important Notes:**
+- Skill names must match directory names exactly (case-sensitive)
+- Run `oml update` after changing filters to apply changes
+- Personal overrides in `~/.oml/overrides/skills.yaml` take precedence
 
 ### Environment Variables
 

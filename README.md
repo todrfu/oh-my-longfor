@@ -143,6 +143,10 @@ skills:
       branch: main          # Default: main
       subdir: "skills/"     # Default: skills/
       auth: null            # Options: null (public), token (uses GITHUB_TOKEN), ssh
+      # Optional: Filter which skills to install
+      # includes: ["skill-a", "skill-b"]  # Whitelist: ONLY these skills
+      # excludes: ["skill-c"]              # Blacklist: all EXCEPT these
+      # If neither specified, all skills are installed
 
 # ─── Plugins ────────────────────────────────────────────────
 # OpenCode plugins (npm packages) to load automatically

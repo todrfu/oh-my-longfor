@@ -92,7 +92,7 @@ cmd_update() {
 
   # Re-create skill symlinks
   oml_remove_skill_symlinks
-  oml_create_skill_symlinks
+  oml_create_skill_symlinks "$manifest"
 
   # Regenerate all configs (backup created inside generate functions)
   oml_info "Regenerating configs..."

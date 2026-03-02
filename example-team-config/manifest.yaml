@@ -78,12 +78,23 @@ skills:
       branch: main
       subdir: "skills/"
       auth: null  # public repo
+      # Optional: Restrict which skills are installed from this repository
+      # Use 'includes' to ONLY install specific skills (whitelist approach)
+      # includes: ["skill-a", "skill-b"]
+      # Use 'excludes' to install all EXCEPT specific skills (blacklist approach)
+      # excludes: ["skill-c"]
+      # If both are specified, 'includes' takes precedence
+      # If neither is specified, ALL skills from the repo will be installed
 
     # Domain-specific skills (private repo using GitHub token)
     - repo: "https://github.com/example/domain-skills"
       branch: main
       subdir: "skills/"
       auth: token  # uses GITHUB_TOKEN env var
+      # Example: Only install specific domain skills
+      # includes: ["customer-analysis", "sales-pipeline"]
+      # Example: Install all except deprecated skills
+      # excludes: ["legacy-skill", "deprecated-tool"]
 
 # =============================================================================
 # Plugins

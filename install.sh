@@ -461,7 +461,7 @@ EOF
   oml_info "Syncing skill repositories..."
   if command -v oml_sync_skills >/dev/null 2>&1; then
     oml_sync_skills "$manifest_file" || oml_warn "Some skill repos could not be cloned (check errors above)"
-    oml_create_skill_symlinks || oml_warn "Could not create skill symlinks"
+    oml_create_skill_symlinks "$manifest_file" || oml_warn "Could not create skill symlinks"
   else
     oml_warn "lib/skills.sh not available — skipping skill repo sync"
   fi

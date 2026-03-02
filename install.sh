@@ -84,16 +84,19 @@ _bootstrap_script_dir() {
   local bootstrap_dir="${OML_HOME}/.bootstrap"
   mkdir -p "$OML_HOME"
 
-  if [ -d "${bootstrap_dir}/.git" ]; then
-    git -C "$bootstrap_dir" pull --ff-only --quiet 2>/dev/null || true
-  else
-    git clone --depth 1 --branch "$OML_SELF_BRANCH" --quiet \
-      "$OML_SELF_REPO" "$bootstrap_dir" 2>/dev/null || {
-      oml_warn "Could not clone oml repo ($OML_SELF_REPO) — some features will be skipped."
-      oml_warn "Override: OML_SELF_REPO=<url> bash install.sh ..."
-      return 1
-    }
+  # Always refresh bootstrap sources to avoid stale lib/ scripts on user machines.
+  # Previously we reused ~/.oml/.bootstrap and silently ignored pull failures,
+  # which could leave users on outdated installers.
+  if [ -d "$bootstrap_dir" ]; then
+    rm -rf "$bootstrap_dir"
   fi
+
+  git clone --depth 1 --branch "$OML_SELF_BRANCH" --quiet \
+    "$OML_SELF_REPO" "$bootstrap_dir" 2>/dev/null || {
+    oml_warn "Could not clone oml repo ($OML_SELF_REPO) — some features will be skipped."
+    oml_warn "Override: OML_SELF_REPO=<url> bash install.sh ..."
+    return 1
+  }
 
   if [ ! -d "$bootstrap_dir/lib" ]; then
     oml_warn "Cloned oml repo but lib/ not found — skipping self-bootstrap"
